@@ -1,6 +1,7 @@
 // Content Script - Injected into LinkedIn pages
 
 import { MessageTypes } from '../shared/constants';
+import { domObserver, type ObservedElement } from './dom-observer';
 
 console.log('[LinkedIn Assistant] Content script loaded');
 
@@ -70,9 +71,47 @@ function addLoadIndicator() {
   `;
 }
 
+// Initialize DOM Observer
+function initializeDOMObserver() {
+  console.log('[Content Script] Initializing DOM Observer...');
+
+  // Register callbacks for different element types
+  domObserver.on('post-composer', (observed: ObservedElement) => {
+    console.log('[Content Script] Post composer detected:', observed.element);
+    // Future: Inject "Generate Post" and "Improve Post" buttons here
+  });
+
+  domObserver.on('comment-box', (observed: ObservedElement) => {
+    console.log('[Content Script] Comment box detected:', observed.metadata?.postId);
+    // Future: Inject "Reply to Comment" button here
+  });
+
+  domObserver.on('feed-post', (observed: ObservedElement) => {
+    console.log('[Content Script] Feed post detected:', observed.metadata?.postId);
+    // Future: Can be used for post analysis or context
+  });
+
+  domObserver.on('profile-section', (observed: ObservedElement) => {
+    console.log('[Content Script] Profile section detected');
+    // Future: Extract data for CV generation
+  });
+
+  // Start observing
+  domObserver.start();
+
+  // Clean up stale elements every 30 seconds
+  setInterval(() => {
+    domObserver.cleanupStaleElements();
+  }, 30000);
+}
+
 // Wait for page to be ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', addLoadIndicator);
+  document.addEventListener('DOMContentLoaded', () => {
+    addLoadIndicator();
+    initializeDOMObserver();
+  });
 } else {
   addLoadIndicator();
+  initializeDOMObserver();
 }
