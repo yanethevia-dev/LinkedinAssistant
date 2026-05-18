@@ -58,6 +58,38 @@ export interface MessageResponse {
 }
 
 // ============================================================================
+// AI Provider
+// ============================================================================
+
+export type AIProvider = 'claude' | 'openai' | 'gemini';
+
+export interface AIRequest {
+  provider: AIProvider;
+  model?: string;
+  systemPrompt: string;
+  userPrompt: string;
+  temperature?: number;
+  maxTokens?: number;
+}
+
+export interface AIResponse {
+  content: string;
+  provider: AIProvider;
+  model: string;
+  usage?: {
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+  };
+}
+
+export interface AIError {
+  code: string;
+  message: string;
+  details?: any;
+}
+
+// ============================================================================
 // Storage
 // ============================================================================
 
