@@ -14,14 +14,12 @@ async function initializeServiceWorker() {
     await storageService.init();
     console.log('[Service Worker] Initialization complete');
 
-    if (DEBUG) {
-      // Log storage info in debug mode
-      const info = await storageService.getStorageInfo();
-      console.log('[Service Worker] Storage:', {
-        used: `${(info.bytesInUse / 1024).toFixed(2)} KB`,
-        quota: `${(info.quota / 1024 / 1024).toFixed(2)} MB`
-      });
-    }
+    // Log storage info (always show for debugging)
+    const info = await storageService.getStorageInfo();
+    console.log('[Service Worker] Storage:', {
+      used: `${(info.bytesInUse / 1024).toFixed(2)} KB`,
+      quota: `${(info.quota / 1024 / 1024).toFixed(2)} MB`
+    });
   } catch (error) {
     console.error('[Service Worker] Initialization failed:', error);
   }
@@ -30,9 +28,8 @@ async function initializeServiceWorker() {
 // Listen for messages from content scripts and popup
 chrome.runtime.onMessage.addListener(
   (message: Message, sender, sendResponse: (response: MessageResponse) => void) => {
-    if (DEBUG) {
-      console.log('[Service Worker] Received message:', message.type, message.payload);
-    }
+    // Always log messages for debugging
+    console.log('[Service Worker] Received message:', message.type, message.payload);
 
     switch (message.type) {
       case MessageTypes.PING:

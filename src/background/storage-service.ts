@@ -9,17 +9,17 @@ class StorageService {
    * Initialize storage with default settings if needed
    */
   async init(): Promise<void> {
-    if (DEBUG) console.log('[StorageService] Initializing...');
+    console.log('[StorageService] Initializing...');
 
     try {
       const settings = await this.getSettings();
 
       if (!settings) {
         // First time initialization
-        if (DEBUG) console.log('[StorageService] First time init - creating default settings');
+        console.log('[StorageService] First time init - creating default settings');
         await this.updateSettings(DEFAULT_USER_SETTINGS);
       } else {
-        if (DEBUG) console.log('[StorageService] Settings loaded:', settings);
+        console.log('[StorageService] Settings loaded');
       }
     } catch (error) {
       console.error('[StorageService] Init error:', error);
@@ -61,9 +61,7 @@ class StorageService {
 
       await chrome.storage.local.set({ settings: newSettings });
 
-      if (DEBUG) {
-        console.log('[StorageService] Settings updated:', newSettings);
-      }
+      console.log('[StorageService] Settings updated');
     } catch (error) {
       console.error('[StorageService] Error updating settings:', error);
       throw error;
@@ -74,7 +72,7 @@ class StorageService {
    * Reset settings to defaults
    */
   async resetSettings(): Promise<void> {
-    if (DEBUG) console.log('[StorageService] Resetting to defaults');
+    console.log('[StorageService] Resetting to defaults');
 
     await this.updateSettings({
       ...DEFAULT_USER_SETTINGS,
@@ -115,7 +113,7 @@ class StorageService {
    * Clear all storage (use with caution!)
    */
   async clearAll(): Promise<void> {
-    if (DEBUG) console.warn('[StorageService] Clearing all storage!');
+    console.warn('[StorageService] Clearing all storage!');
 
     try {
       await chrome.storage.local.clear();
