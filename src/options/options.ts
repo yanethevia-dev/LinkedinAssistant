@@ -43,9 +43,21 @@ loadSettings();
 // Event Listeners
 
 // Show/Hide API Keys
-claudeShowBtn.addEventListener('click', () => togglePasswordVisibility(claudeApiKeyInput));
-openaiShowBtn.addEventListener('click', () => togglePasswordVisibility(openaiApiKeyInput));
-geminiShowBtn.addEventListener('click', () => togglePasswordVisibility(geminiApiKeyInput));
+claudeShowBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  console.log('[Options] Claude show button clicked');
+  togglePasswordVisibility(claudeApiKeyInput, claudeShowBtn);
+});
+openaiShowBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  console.log('[Options] OpenAI show button clicked');
+  togglePasswordVisibility(openaiApiKeyInput, openaiShowBtn);
+});
+geminiShowBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  console.log('[Options] Gemini show button clicked');
+  togglePasswordVisibility(geminiApiKeyInput, geminiShowBtn);
+});
 
 // Test Connections
 claudeTestBtn.addEventListener('click', () => testConnection('claude'));
@@ -276,11 +288,17 @@ function updateStatusBadges() {
   }
 }
 
-function togglePasswordVisibility(input: HTMLInputElement) {
+function togglePasswordVisibility(input: HTMLInputElement, button: HTMLButtonElement) {
+  console.log('[Options] Toggle password visibility for:', input.id, 'Current type:', input.type);
+
   if (input.type === 'password') {
     input.type = 'text';
+    button.textContent = '🙈'; // Change icon to "hide"
+    console.log('[Options] Changed to text (visible)');
   } else {
     input.type = 'password';
+    button.textContent = '👁️'; // Change icon to "show"
+    console.log('[Options] Changed to password (hidden)');
   }
 }
 
