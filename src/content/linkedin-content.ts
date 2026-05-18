@@ -1,6 +1,9 @@
 // Content Script - Injected into LinkedIn pages
 
 import { MessageTypes } from '../shared/constants';
+import { domObserver, type ObservedElement } from './dom-observer';
+import { uiInjector } from './ui-injector';
+import { modal } from './modal';
 
 console.log('[LinkedIn Assistant] Content script loaded');
 
@@ -70,9 +73,137 @@ function addLoadIndicator() {
   `;
 }
 
+// Initialize DOM Observer and UI Injection
+function initializeDOMObserver() {
+  console.log('[Content Script] Initializing DOM Observer...');
+
+  // Register callback for post composers
+  domObserver.on('post-composer', (observed: ObservedElement) => {
+    console.log('[Content Script] Post composer detected:', observed.element);
+
+    // Inject buttons into the composer
+    const injected = uiInjector.injectPostComposerButtons(observed.element, {
+      onGenerate: () => handleGeneratePost(observed.element),
+      onImprove: () => handleImprovePost(observed.element)
+    });
+
+    if (injected) {
+      console.log('[Content Script] Buttons injected into composer');
+    }
+  });
+
+  // Register callback for comment boxes (future use)
+  domObserver.on('comment-box', (observed: ObservedElement) => {
+    console.log('[Content Script] Comment box detected:', observed.metadata?.postId);
+    // Future: Inject "Reply" button
+  });
+
+  // Register callback for feed posts (future use)
+  domObserver.on('feed-post', (observed: ObservedElement) => {
+    console.log('[Content Script] Feed post detected:', observed.metadata?.postId);
+    // Future: Can be used for post analysis or context
+  });
+
+  // Register callback for profile sections (future use)
+  domObserver.on('profile-section', (observed: ObservedElement) => {
+    console.log('[Content Script] Profile section detected');
+    // Future: Extract data for CV generation
+  });
+
+  // Start observing
+  domObserver.start();
+
+  // Clean up stale elements every 30 seconds
+  setInterval(() => {
+    domObserver.cleanupStaleElements();
+  }, 30000);
+
+  console.log('[Content Script] DOM Observer started');
+}
+
+// Handle Generate Post button click
+function handleGeneratePost(composerElement: HTMLElement) {
+  console.log('[Content Script] Generate Post clicked');
+
+  // Open modal to get post topic/idea
+  modal.open({
+    title: '✨ Generate Post',
+    description: 'Tell me what you want to write about, and I\'ll generate a LinkedIn post for you.',
+    placeholder: 'Example: "Share insights about remote work culture" or "Announce our new product launch"...',
+    primaryButton: 'Generate Post',
+    secondaryButton: 'Cancel',
+    maxLength: 500,
+    showCharCount: true,
+    onPrimary: async (topic: string) => {
+      console.log('[Content Script] Generating post for topic:', topic);
+
+      // TODO: Issue #7 - Call AI service to generate post
+      // For now, simulate with timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // TODO: Insert generated content into composer
+      alert(`🎉 Post generated!\n\nTopic: ${topic}\n\n(Actual AI generation coming in Issue #7)`);
+    },
+    onSecondary: () => {
+      console.log('[Content Script] Generate cancelled');
+    },
+    onClose: () => {
+      console.log('[Content Script] Modal closed');
+    }
+  });
+}
+
+// Handle Improve Post button click
+function handleImprovePost(composerElement: HTMLElement) {
+  console.log('[Content Script] Improve Post clicked');
+
+  // Get current post text
+  const textEditor = composerElement.querySelector('.ql-editor, [contenteditable="true"]') as HTMLElement;
+
+  if (!textEditor || !textEditor.textContent?.trim()) {
+    alert('Please write something first!\n\nThe Improve Post feature enhances your existing draft.');
+    return;
+  }
+
+  const currentText = textEditor.textContent.trim();
+  console.log('[Content Script] Current post text:', currentText.substring(0, 50) + '...');
+
+  // Open modal with current text
+  modal.open({
+    title: '🚀 Improve Post',
+    description: 'I\'ll enhance your post to make it more engaging and professional. Edit if needed:',
+    placeholder: 'Your post content...',
+    initialValue: currentText,
+    primaryButton: 'Improve Post',
+    secondaryButton: 'Cancel',
+    maxLength: 3000,
+    showCharCount: true,
+    onPrimary: async (text: string) => {
+      console.log('[Content Script] Improving post:', text.substring(0, 50) + '...');
+
+      // TODO: Issue #8 - Call AI service to improve post
+      // For now, simulate with timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // TODO: Replace text in composer with improved version
+      alert(`🎉 Post improved!\n\nOriginal: ${text.substring(0, 50)}...\n\n(Actual AI improvement coming in Issue #8)`);
+    },
+    onSecondary: () => {
+      console.log('[Content Script] Improve cancelled');
+    },
+    onClose: () => {
+      console.log('[Content Script] Modal closed');
+    }
+  });
+}
+
 // Wait for page to be ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', addLoadIndicator);
+  document.addEventListener('DOMContentLoaded', () => {
+    addLoadIndicator();
+    initializeDOMObserver();
+  });
 } else {
   addLoadIndicator();
+  initializeDOMObserver();
 }
