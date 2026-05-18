@@ -66,6 +66,14 @@ module.exports = (env) => {
             from: 'src/assets',
             to: 'assets',
             noErrorOnMissing: true
+          },
+          {
+            from: 'src/options/options.css',
+            to: 'options/options.css'
+          },
+          {
+            from: 'src/content/linkedin-styles.css',
+            to: 'content/linkedin-styles.css'
           }
         ]
       }),
