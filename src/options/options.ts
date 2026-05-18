@@ -215,9 +215,16 @@ async function testConnection(provider: 'claude' | 'openai' | 'gemini') {
     gemini: geminiApiKeyInput.value.trim()
   };
 
+  const modelMap = {
+    claude: claudeModelSelect.value,
+    openai: openaiModelSelect.value,
+    gemini: geminiModelSelect.value
+  };
+
   const btn = btnMap[provider];
   const status = statusMap[provider];
   const apiKey = keyMap[provider];
+  const model = modelMap[provider];
 
   if (!apiKey) {
     showToast(`Please enter ${provider} API key first`, 'warning');
@@ -230,21 +237,35 @@ async function testConnection(provider: 'claude' | 'openai' | 'gemini') {
     status.textContent = 'Testing...';
     status.className = 'status-badge testing';
 
-    // TODO: Implement actual API test in Issue #3
-    // For now, just simulate a test
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    console.log(`[Options] Testing ${provider} connection...`);
 
-    // Simulate success
+    // Call the real AI service through service worker
+    const response = await chrome.runtime.sendMessage({
+      type: MessageTypes.TEST_AI_CONNECTION,
+      payload: {
+        provider,
+        apiKey,
+        model
+      }
+    });
+
+    if (!response || !response.success) {
+      throw new Error(response?.error || 'Connection test failed');
+    }
+
     status.textContent = 'Connected ✓';
     status.className = 'status-badge configured';
     showToast(`${provider} connection successful`, 'success');
 
     console.log(`[Options] ${provider} test passed`);
-  } catch (error) {
+  } catch (error: any) {
     console.error(`[Options] ${provider} test failed:`, error);
     status.textContent = 'Error';
     status.className = 'status-badge error';
-    showToast(`${provider} connection failed`, 'error');
+
+    // Show user-friendly error message
+    const errorMsg = error.message || `${provider} connection failed`;
+    showToast(errorMsg, 'error');
   } finally {
     btn.disabled = false;
     btn.textContent = 'Test Connection';
