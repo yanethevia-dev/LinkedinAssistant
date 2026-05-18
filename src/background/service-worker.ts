@@ -1,14 +1,38 @@
 // Background Service Worker
 
-import { MessageTypes } from '../shared/constants';
-import type { Message, MessageResponse } from '../shared/types';
+import { MessageTypes, DEBUG } from '../shared/constants';
+import type { Message, MessageResponse, UserSettings } from '../shared/types';
+import { storageService } from './storage-service';
 
 console.log('[LinkedIn Assistant] Service worker initialized');
+
+// Initialize storage on startup
+initializeServiceWorker();
+
+async function initializeServiceWorker() {
+  try {
+    await storageService.init();
+    console.log('[Service Worker] Initialization complete');
+
+    if (DEBUG) {
+      // Log storage info in debug mode
+      const info = await storageService.getStorageInfo();
+      console.log('[Service Worker] Storage:', {
+        used: `${(info.bytesInUse / 1024).toFixed(2)} KB`,
+        quota: `${(info.quota / 1024 / 1024).toFixed(2)} MB`
+      });
+    }
+  } catch (error) {
+    console.error('[Service Worker] Initialization failed:', error);
+  }
+}
 
 // Listen for messages from content scripts and popup
 chrome.runtime.onMessage.addListener(
   (message: Message, sender, sendResponse: (response: MessageResponse) => void) => {
-    console.log('[Service Worker] Received message:', message.type);
+    if (DEBUG) {
+      console.log('[Service Worker] Received message:', message.type, message.payload);
+    }
 
     switch (message.type) {
       case MessageTypes.PING:
@@ -19,6 +43,10 @@ chrome.runtime.onMessage.addListener(
         handleGetSettings(sendResponse);
         return true; // Async response
 
+      case MessageTypes.UPDATE_SETTINGS:
+        handleUpdateSettings(message.payload, sendResponse);
+        return true; // Async response
+
       default:
         sendResponse({ success: false, error: 'Unknown message type' });
     }
@@ -27,12 +55,7 @@ chrome.runtime.onMessage.addListener(
 
 async function handleGetSettings(sendResponse: (response: MessageResponse) => void) {
   try {
-    const result = await chrome.storage.local.get('settings');
-    const settings = result.settings || {
-      id: 'user-config',
-      version: '0.1.0',
-      onboardingCompleted: false
-    };
+    const settings = await storageService.getSettings();
     sendResponse({ success: true, data: settings });
   } catch (error) {
     console.error('[Service Worker] Error getting settings:', error);
@@ -40,12 +63,30 @@ async function handleGetSettings(sendResponse: (response: MessageResponse) => vo
   }
 }
 
+async function handleUpdateSettings(
+  updates: Partial<UserSettings>,
+  sendResponse: (response: MessageResponse) => void
+) {
+  try {
+    await storageService.updateSettings(updates);
+    const settings = await storageService.getSettings();
+    sendResponse({ success: true, data: settings });
+  } catch (error) {
+    console.error('[Service Worker] Error updating settings:', error);
+    sendResponse({ success: false, error: 'Failed to update settings' });
+  }
+}
+
 // Extension installed/updated
-chrome.runtime.onInstalled.addListener((details) => {
+chrome.runtime.onInstalled.addListener(async (details) => {
   console.log('[LinkedIn Assistant] Extension installed/updated:', details.reason);
 
   if (details.reason === 'install') {
-    // First install - open onboarding
+    // First install - initialize storage and open onboarding
+    await storageService.init();
     chrome.tabs.create({ url: 'options/options.html' });
+  } else if (details.reason === 'update') {
+    // Update - ensure settings are merged with any new defaults
+    await storageService.init();
   }
 });
