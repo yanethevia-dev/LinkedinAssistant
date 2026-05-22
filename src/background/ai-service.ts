@@ -45,6 +45,16 @@ class AIService {
             maxTokens
           );
 
+        case 'groq':
+          return await this.callGroq(
+            apiKey,
+            model || 'llama-3.1-70b-versatile',
+            request.systemPrompt,
+            request.userPrompt,
+            temperature,
+            maxTokens
+          );
+
         default:
           throw {
             code: 'INVALID_PROVIDER',
@@ -262,6 +272,63 @@ class AIService {
         promptTokens: data.usageMetadata?.promptTokenCount,
         completionTokens: data.usageMetadata?.candidatesTokenCount,
         totalTokens: data.usageMetadata?.totalTokenCount
+      }
+    };
+  }
+
+  /**
+   * Call Groq API
+   */
+  private async callGroq(
+    apiKey: string,
+    model: string,
+    systemPrompt: string,
+    userPrompt: string,
+    temperature: number,
+    maxTokens: number
+  ): Promise<AIResponse> {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt
+          },
+          {
+            role: 'user',
+            content: userPrompt
+          }
+        ],
+        temperature,
+        max_tokens: maxTokens
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw {
+        code: error.error?.code || 'API_ERROR',
+        message: error.error?.message || 'Groq API request failed',
+        details: error
+      } as AIError;
+    }
+
+    const data = await response.json();
+
+    return {
+      content: data.choices[0].message.content,
+      provider: 'groq',
+      model,
+      usage: {
+        promptTokens: data.usage?.prompt_tokens,
+        completionTokens: data.usage?.completion_tokens,
+        totalTokens: data.usage?.total_tokens
       }
     };
   }

@@ -27,6 +27,13 @@ const geminiTestBtn = document.getElementById('gemini-test') as HTMLButtonElemen
 const geminiStatus = document.getElementById('gemini-status') as HTMLSpanElement;
 const geminiCard = document.getElementById('gemini-card') as HTMLDivElement;
 
+const groqApiKeyInput = document.getElementById('groq-api-key') as HTMLInputElement;
+const groqModelSelect = document.getElementById('groq-model') as HTMLSelectElement;
+const groqShowBtn = document.getElementById('groq-show') as HTMLButtonElement;
+const groqTestBtn = document.getElementById('groq-test') as HTMLButtonElement;
+const groqStatus = document.getElementById('groq-status') as HTMLSpanElement;
+const groqCard = document.getElementById('groq-card') as HTMLDivElement;
+
 const defaultProviderSelect = document.getElementById('default-provider') as HTMLSelectElement;
 
 const saveBtn = document.getElementById('save-settings') as HTMLButtonElement;
@@ -58,11 +65,17 @@ geminiShowBtn.addEventListener('click', (e) => {
   console.log('[Options] Gemini show button clicked');
   togglePasswordVisibility(geminiApiKeyInput, geminiShowBtn);
 });
+groqShowBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  console.log('[Options] Groq show button clicked');
+  togglePasswordVisibility(groqApiKeyInput, groqShowBtn);
+});
 
 // Test Connections
 claudeTestBtn.addEventListener('click', () => testConnection('claude'));
 openaiTestBtn.addEventListener('click', () => testConnection('openai'));
 geminiTestBtn.addEventListener('click', () => testConnection('gemini'));
+groqTestBtn.addEventListener('click', () => testConnection('groq'));
 
 // Save & Reset
 saveBtn.addEventListener('click', () => saveSettings());
@@ -70,7 +83,7 @@ resetBtn.addEventListener('click', resetSettings);
 
 // Auto-save on API key input (after 1 second of no typing)
 let saveTimeout: ReturnType<typeof setTimeout>;
-[claudeApiKeyInput, openaiApiKeyInput, geminiApiKeyInput].forEach(input => {
+[claudeApiKeyInput, openaiApiKeyInput, geminiApiKeyInput, groqApiKeyInput].forEach(input => {
   input.addEventListener('input', () => {
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(() => {
@@ -102,6 +115,9 @@ async function loadSettings() {
     geminiApiKeyInput.value = currentSettings.apiKeys.gemini || '';
     geminiModelSelect.value = currentSettings.models.gemini;
 
+    groqApiKeyInput.value = currentSettings.apiKeys.groq || '';
+    groqModelSelect.value = currentSettings.models.groq;
+
     defaultProviderSelect.value = currentSettings.defaultProvider;
 
     // Update status badges
@@ -121,14 +137,16 @@ async function saveSettings(silent: boolean = false) {
       apiKeys: {
         claude: claudeApiKeyInput.value.trim() || null,
         openai: openaiApiKeyInput.value.trim() || null,
-        gemini: geminiApiKeyInput.value.trim() || null
+        gemini: geminiApiKeyInput.value.trim() || null,
+        groq: groqApiKeyInput.value.trim() || null
       },
       models: {
         claude: claudeModelSelect.value,
         openai: openaiModelSelect.value,
-        gemini: geminiModelSelect.value
+        gemini: geminiModelSelect.value,
+        groq: groqModelSelect.value
       },
-      defaultProvider: defaultProviderSelect.value as 'claude' | 'openai' | 'gemini'
+      defaultProvider: defaultProviderSelect.value as 'claude' | 'openai' | 'gemini' | 'groq'
     };
 
     const response = await chrome.runtime.sendMessage({
@@ -172,7 +190,8 @@ async function resetSettings() {
       apiKeys: {
         claude: null,
         openai: null,
-        gemini: null
+        gemini: null,
+        groq: null
       }
     };
 
@@ -196,29 +215,33 @@ async function resetSettings() {
   }
 }
 
-async function testConnection(provider: 'claude' | 'openai' | 'gemini') {
+async function testConnection(provider: 'claude' | 'openai' | 'gemini' | 'groq') {
   const btnMap = {
     claude: claudeTestBtn,
     openai: openaiTestBtn,
-    gemini: geminiTestBtn
+    gemini: geminiTestBtn,
+    groq: groqTestBtn
   };
 
   const statusMap = {
     claude: claudeStatus,
     openai: openaiStatus,
-    gemini: geminiStatus
+    gemini: geminiStatus,
+    groq: groqStatus
   };
 
   const keyMap = {
     claude: claudeApiKeyInput.value.trim(),
     openai: openaiApiKeyInput.value.trim(),
-    gemini: geminiApiKeyInput.value.trim()
+    gemini: geminiApiKeyInput.value.trim(),
+    groq: groqApiKeyInput.value.trim()
   };
 
   const modelMap = {
     claude: claudeModelSelect.value,
     openai: openaiModelSelect.value,
-    gemini: geminiModelSelect.value
+    gemini: geminiModelSelect.value,
+    groq: groqModelSelect.value
   };
 
   const btn = btnMap[provider];
@@ -306,6 +329,17 @@ function updateStatusBadges() {
     geminiStatus.textContent = 'Not Configured';
     geminiStatus.className = 'status-badge';
     geminiCard.classList.remove('configured');
+  }
+
+  // Groq
+  if (currentSettings.apiKeys.groq) {
+    groqStatus.textContent = 'Configured ✓';
+    groqStatus.className = 'status-badge configured';
+    groqCard.classList.add('configured');
+  } else {
+    groqStatus.textContent = 'Not Configured';
+    groqStatus.className = 'status-badge';
+    groqCard.classList.remove('configured');
   }
 }
 

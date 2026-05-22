@@ -14,17 +14,19 @@ export interface UserSettings {
     claude: string | null;
     openai: string | null;
     gemini: string | null;
+    groq: string | null;
   };
-  defaultProvider: 'claude' | 'openai' | 'gemini';
+  defaultProvider: 'claude' | 'openai' | 'gemini' | 'groq';
   providerByFeature: {
-    posts: 'default' | 'claude' | 'openai' | 'gemini';
-    comments: 'default' | 'claude' | 'openai' | 'gemini';
-    cv: 'default' | 'claude' | 'openai' | 'gemini';
+    posts: 'default' | 'claude' | 'openai' | 'gemini' | 'groq';
+    comments: 'default' | 'claude' | 'openai' | 'gemini' | 'groq';
+    cv: 'default' | 'claude' | 'openai' | 'gemini' | 'groq';
   };
   models: {
     claude: string;
     openai: string;
     gemini: string;
+    groq: string;
   };
 
   // Style Configuration
@@ -61,7 +63,7 @@ export interface MessageResponse {
 // AI Provider
 // ============================================================================
 
-export type AIProvider = 'claude' | 'openai' | 'gemini';
+export type AIProvider = 'claude' | 'openai' | 'gemini' | 'groq';
 
 export interface AIRequest {
   provider: AIProvider;
