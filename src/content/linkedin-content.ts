@@ -6,16 +6,22 @@ import { uiInjector } from './ui-injector';
 import { modal } from './modal';
 
 console.log('[LinkedIn Assistant] Content script loaded');
+console.log('[LinkedIn Assistant] URL:', window.location.href);
+console.log('[LinkedIn Assistant] Document state:', document.readyState);
 
 // Test communication with background worker
 chrome.runtime.sendMessage({ type: MessageTypes.PING }, (response) => {
   if (response && response.success) {
     console.log('[Content Script] Connection to background worker: OK');
+  } else {
+    console.error('[Content Script] Failed to connect to background worker:', response);
   }
 });
 
 // Simple test: Add a visual indicator that extension is loaded
 function addLoadIndicator() {
+  console.log('[LinkedIn Assistant] addLoadIndicator() called');
+
   const indicator = document.createElement('div');
   indicator.id = 'lia-loaded-indicator';
   indicator.textContent = '✓ LinkedIn Assistant Loaded';
@@ -51,6 +57,7 @@ function addLoadIndicator() {
   document.head.appendChild(style);
 
   document.body.appendChild(indicator);
+  console.log('[LinkedIn Assistant] Indicator added to page');
 
   // Remove after 3 seconds
   setTimeout(() => {
@@ -198,12 +205,17 @@ function handleImprovePost(composerElement: HTMLElement) {
 }
 
 // Wait for page to be ready
+console.log('[LinkedIn Assistant] Initializing... readyState:', document.readyState);
+
 if (document.readyState === 'loading') {
+  console.log('[LinkedIn Assistant] Waiting for DOMContentLoaded');
   document.addEventListener('DOMContentLoaded', () => {
+    console.log('[LinkedIn Assistant] DOMContentLoaded fired');
     addLoadIndicator();
     initializeDOMObserver();
   });
 } else {
+  console.log('[LinkedIn Assistant] Document already ready, initializing now');
   addLoadIndicator();
   initializeDOMObserver();
 }

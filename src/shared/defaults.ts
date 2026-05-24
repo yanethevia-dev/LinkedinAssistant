@@ -25,7 +25,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
     claude: 'claude-3-5-sonnet-20241022',
     openai: 'gpt-4-turbo',
     gemini: 'gemini-pro',
-    groq: 'llama-3.1-70b-versatile'
+    groq: 'llama-3.1-8b-instant'
   },
 
   // Style
