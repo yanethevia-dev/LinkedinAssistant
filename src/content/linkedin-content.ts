@@ -10,13 +10,27 @@ console.log('[LinkedIn Assistant] URL:', window.location.href);
 console.log('[LinkedIn Assistant] Document state:', document.readyState);
 
 // Test communication with background worker
-chrome.runtime.sendMessage({ type: MessageTypes.PING }, (response) => {
-  if (response && response.success) {
-    console.log('[Content Script] Connection to background worker: OK');
-  } else {
-    console.error('[Content Script] Failed to connect to background worker:', response);
-  }
-});
+console.log('[Content Script] Sending PING to background worker...');
+try {
+  chrome.runtime.sendMessage({ type: MessageTypes.PING }, (response) => {
+    console.log('[Content Script] PING response received:', response);
+    if (chrome.runtime.lastError) {
+      console.error('[Content Script] Runtime error:', chrome.runtime.lastError);
+    }
+    if (response && response.success) {
+      console.log('[Content Script] Connection to background worker: OK');
+    } else {
+      console.error('[Content Script] Failed to connect to background worker:', response);
+    }
+  });
+
+  // Timeout check
+  setTimeout(() => {
+    console.log('[Content Script] 2 seconds passed since PING sent');
+  }, 2000);
+} catch (error) {
+  console.error('[Content Script] Error sending message:', error);
+}
 
 // Simple test: Add a visual indicator that extension is loaded
 function addLoadIndicator() {
@@ -84,8 +98,9 @@ function addLoadIndicator() {
 function initializeDOMObserver() {
   console.log('[Content Script] Initializing DOM Observer...');
 
-  // Register callback for post composers
-  domObserver.on('post-composer', (observed: ObservedElement) => {
+  try {
+    // Register callback for post composers
+    domObserver.on('post-composer', (observed: ObservedElement) => {
     console.log('[Content Script] Post composer detected:', observed.element);
 
     // Inject buttons into the composer
@@ -120,12 +135,15 @@ function initializeDOMObserver() {
   // Start observing
   domObserver.start();
 
-  // Clean up stale elements every 30 seconds
-  setInterval(() => {
-    domObserver.cleanupStaleElements();
-  }, 30000);
+    // Clean up stale elements every 30 seconds
+    setInterval(() => {
+      domObserver.cleanupStaleElements();
+    }, 30000);
 
-  console.log('[Content Script] DOM Observer started');
+    console.log('[Content Script] DOM Observer started');
+  } catch (error) {
+    console.error('[Content Script] Error initializing DOM Observer:', error);
+  }
 }
 
 // Handle Generate Post button click
