@@ -69,6 +69,7 @@ export class LinkedInDOMObserver {
       );
 
       if (hasSignificantChanges) {
+        console.log('[DOMObserver] DOM changed, rescanning...');
         this.scanPage();
       }
     });
@@ -139,27 +140,49 @@ export class LinkedInDOMObserver {
     // LinkedIn's post composer has various selectors depending on state
     const selectors = [
       '.share-box-feed-entry__trigger',           // Main "Start a post" button
+      '.share-box-feed-entry',                    // Feed entry container
       '.share-creation-state__text-editor',       // Opened composer
+      '.share-creation-state',                    // Composer state container
       '[data-test-share-box-text-editor]',        // Alternative selector
-      '.ql-editor[data-placeholder]'              // Quill editor (post text area)
+      '.ql-editor[data-placeholder]',             // Quill editor (post text area)
+      '.artdeco-modal .share-box',                // Modal composer
+      '.share-unified-creation-state',            // Unified creation state
+      'form[data-test-share-box-form]',           // Form selector
+      '.msg-form__contenteditable'                // Alternative editor
     ];
 
+    console.log('[DOMObserver] Scanning for post composer...');
+
+    let foundAny = false;
     for (const selector of selectors) {
       const elements = document.querySelectorAll(selector);
+      console.log(`[DOMObserver]   Trying "${selector}" → found ${elements.length}`);
+
       elements.forEach((el) => {
         const element = el as HTMLElement;
 
         // Skip if already observed
         if (this.observedElements.has(element)) {
+          console.log('[DOMObserver]     Already observed, skipping');
           return;
         }
 
+        const visible = this.isVisible(element);
+        const isComposer = this.isPostComposer(element);
+        console.log(`[DOMObserver]     Visible: ${visible}, IsComposer: ${isComposer}`);
+
         // Check if it's actually visible and part of post composer
-        if (this.isVisible(element) && this.isPostComposer(element)) {
+        if (visible && isComposer) {
+          foundAny = true;
           this.observedElements.set(element, 'post-composer');
           this.notifyCallbacks('post-composer', element);
+          console.log('[DOMObserver]     ✓ Detected and notified!');
         }
       });
+    }
+
+    if (!foundAny) {
+      console.log('[DOMObserver] No post composer found in this scan');
     }
   }
 

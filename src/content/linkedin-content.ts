@@ -72,12 +72,17 @@ function addLoadIndicator() {
 
   document.body.appendChild(indicator);
   console.log('[LinkedIn Assistant] Indicator added to page');
+  console.log('[LinkedIn Assistant] Toast should be visible at bottom-right corner');
 
-  // Remove after 3 seconds
+  // Remove after 10 seconds (increased for debugging)
   setTimeout(() => {
+    console.log('[LinkedIn Assistant] Removing toast indicator...');
     indicator.style.animation = 'slideOutToRight 0.3s ease';
-    setTimeout(() => indicator.remove(), 300);
-  }, 3000);
+    setTimeout(() => {
+      indicator.remove();
+      console.log('[LinkedIn Assistant] Toast removed');
+    }, 300);
+  }, 10000);
 
   // Add slide out animation
   style.textContent += `
