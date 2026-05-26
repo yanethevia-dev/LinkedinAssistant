@@ -99,85 +99,21 @@ export class UIInjector {
   }
 
   /**
-   * Find the best place to inject buttons in a post composer
+   * Find the best place to inject buttons - SIMPLIFIED
    */
   private findPostComposerInjectionPoint(composerElement: HTMLElement): HTMLElement | null {
-    console.log('[UIInjector] Finding injection point for:', composerElement.className);
+    console.log('[UIInjector] Finding injection point...');
 
-    // Strategy 1: Look for footer/action bar in or near the composer
-    const footerSelectors = [
-      '.share-creation-state__footer',
-      '.share-box-footer',
-      '.share-actions__footer',
-      '[class*="share"][class*="footer"]',
-      '.msg-form__footer'  // For message/post forms
-    ];
+    // Look for the editor inside the dialog
+    const editor = composerElement.querySelector('[contenteditable="true"], .ql-editor') as HTMLElement;
 
-    // First try: search inside the composer element
-    for (const selector of footerSelectors) {
-      const footer = composerElement.querySelector(selector) as HTMLElement;
-      if (footer) {
-        console.log('[UIInjector] Found footer inside composer:', selector);
-        return footer;
-      }
+    if (editor) {
+      console.log('[UIInjector] Found editor, inserting after it');
+      return editor.parentElement || composerElement;
     }
 
-    // Second try: search in parent containers (go up the tree)
-    let parent = composerElement.parentElement;
-    let depth = 0;
-    while (parent && depth < 10) { // Limit depth to avoid going too far up
-      for (const selector of footerSelectors) {
-        const footer = parent.querySelector(selector) as HTMLElement;
-        if (footer) {
-          console.log('[UIInjector] Found footer in parent (depth', depth, '):', selector);
-          return footer;
-        }
-      }
-      parent = parent.parentElement;
-      depth++;
-    }
-
-    // Strategy 2: Look for button container
-    const buttonContainerSelectors = [
-      '.share-actions',
-      '.share-box-footer__buttons',
-      '[class*="share"][class*="action"]',
-      '.msg-form__contenteditable-container' // Container for editable content
-    ];
-
-    for (const selector of buttonContainerSelectors) {
-      const container = composerElement.querySelector(selector) as HTMLElement;
-      if (container) {
-        console.log('[UIInjector] Found button container for injection:', selector);
-        return container;
-      }
-    }
-
-    // Strategy 3: Look for the root of the composer modal/dialog
-    const rootContainerSelectors = [
-      '[role="dialog"]',
-      '.share-creation-state',
-      '.artdeco-modal',
-      '.msg-overlay-conversation-bubble'
-    ];
-
-    parent = composerElement.parentElement;
-    depth = 0;
-    while (parent && depth < 10) {
-      for (const selector of rootContainerSelectors) {
-        if (parent.matches(selector)) {
-          console.log('[UIInjector] Found root container (depth', depth, '):', selector);
-          // Try to append after the composer element itself
-          return parent;
-        }
-      }
-      parent = parent.parentElement;
-      depth++;
-    }
-
-    // Strategy 4: Insert directly after the composer element
-    console.log('[UIInjector] Using composer element itself as injection point');
-    return composerElement.parentElement || composerElement;
+    console.log('[UIInjector] Using dialog itself');
+    return composerElement;
   }
 
   /**

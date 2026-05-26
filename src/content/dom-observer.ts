@@ -134,167 +134,44 @@ export class LinkedInDOMObserver {
   }
 
   /**
-   * Detect the main post composer
+   * Detect the main post composer - SIMPLIFIED
    */
   private detectPostComposer() {
     console.log('[DOMObserver] Scanning for post composer...');
 
-    // First, check if LinkedIn is using Shadow DOM (2026 behavior)
-    const shadowHost = document.querySelector('#interop-outlet[data-testid="interop-shadowdom"]');
+    // SIMPLE: Solo buscar el modal/dialog cuando se abre
+    const dialogs = document.querySelectorAll('[role="dialog"]');
 
-    if (shadowHost && (shadowHost as any).shadowRoot) {
-      console.log('[DOMObserver] Shadow DOM detected, scanning inside...');
-      this.detectPostComposerInShadowDOM((shadowHost as any).shadowRoot);
-      return;
-    }
+    console.log(`[DOMObserver] Found ${dialogs.length} dialogs`);
 
-    // Fallback to regular DOM scanning (legacy LinkedIn)
-    const selectors = [
-      // 2026 LinkedIn selectors (tested)
-      '.share-creation-state__text-editor',                    // Opened composer container
-      '.ql-editor[data-test-ql-editor-contenteditable]',      // Quill editor with data-test
-      '[data-test-ql-editor-contenteditable="true"]',         // Direct data-test selector
-      '[role="textbox"][aria-label*="contenido"]',            // Spanish: "contenido"
-      '[role="textbox"][aria-label*="content"]',              // English: "content"
-      '.editor-content .ql-editor',                           // Editor content wrapper
+    dialogs.forEach((dialog) => {
+      const dialogEl = dialog as HTMLElement;
 
-      // Fallback selectors for "Start a post" button
-      '[role="button"][aria-label*="Crear publicación"]',     // Spanish
-      '[role="button"][aria-label*="Start a post"]',          // English
-      '[componentkey][role="button"]',                        // Generic button with componentkey
-
-      // Legacy selectors (may still work)
-      '.share-box-feed-entry__trigger',
-      '.share-box-feed-entry',
-      '.share-creation-state',
-      '[data-test-share-box-text-editor]',
-      '.ql-editor[data-placeholder]',
-      '.artdeco-modal .share-box'
-    ];
-
-    console.log('[DOMObserver] Scanning regular DOM...');
-
-    let foundAny = false;
-    const candidateElements = new Set<HTMLElement>();
-
-    // First pass: collect all candidate elements
-    for (const selector of selectors) {
-      const elements = document.querySelectorAll(selector);
-      console.log(`[DOMObserver]   Trying "${selector}" → found ${elements.length}`);
-
-      elements.forEach((el) => {
-        const element = el as HTMLElement;
-
-        // Skip if already observed
-        if (this.observedElements.has(element)) {
-          console.log('[DOMObserver]     Already observed, skipping');
-          return;
-        }
-
-        const visible = this.isVisible(element);
-        const isComposer = this.isPostComposer(element);
-        console.log(`[DOMObserver]     Visible: ${visible}, IsComposer: ${isComposer}`);
-
-        if (visible && isComposer) {
-          candidateElements.add(element);
-        }
-      });
-    }
-
-    // Second pass: filter out child elements if their parents are also candidates
-    const rootElements = Array.from(candidateElements).filter(element => {
-      // Check if any other candidate contains this element
-      for (const otherElement of candidateElements) {
-        if (otherElement !== element && otherElement.contains(element)) {
-          console.log('[DOMObserver]     Skipping child element, parent already detected');
-          return false; // This element is a child of another candidate
-        }
+      // Skip if already observed
+      if (this.observedElements.has(dialogEl)) {
+        console.log('[DOMObserver]   Dialog already observed, skipping');
+        return;
       }
-      return true; // This is a root element
-    });
 
-    // Third pass: notify only root elements
-    rootElements.forEach(element => {
-      foundAny = true;
-      this.observedElements.set(element, 'post-composer');
-      this.notifyCallbacks('post-composer', element);
-      console.log('[DOMObserver]     ✓ Detected and notified!', element.className.substring(0, 50));
-    });
+      // Check if it's visible
+      if (!this.isVisible(dialogEl)) {
+        console.log('[DOMObserver]   Dialog not visible, skipping');
+        return;
+      }
 
-    if (!foundAny) {
-      console.log('[DOMObserver] No post composer found in this scan');
-    }
+      // Check if it contains a post editor (contenteditable or .ql-editor)
+      const hasEditor = dialogEl.querySelector('[contenteditable="true"], .ql-editor');
+
+      if (hasEditor) {
+        console.log('[DOMObserver]   ✓ Dialog with editor found!');
+        this.observedElements.set(dialogEl, 'post-composer');
+        this.notifyCallbacks('post-composer', dialogEl);
+      } else {
+        console.log('[DOMObserver]   Dialog has no editor, skipping');
+      }
+    });
   }
 
-  /**
-   * Detect post composer inside Shadow DOM (2026 LinkedIn)
-   */
-  private detectPostComposerInShadowDOM(shadowRoot: ShadowRoot) {
-    // Shadow DOM selectors for LinkedIn 2026
-    const shadowSelectors = [
-      '.ql-editor',                                           // Quill editor
-      '[contenteditable="true"]',                            // Any editable
-      '[role="textbox"]',                                    // Textbox role
-      '[role="textbox"][aria-label*="contenido"]',          // Spanish
-      '[role="textbox"][aria-label*="content"]',            // English
-      '.ql-editor.ql-blank'                                 // Empty quill editor
-    ];
-
-    let foundAny = false;
-    const candidateElements = new Set<HTMLElement>();
-
-    // First pass: collect all candidate elements
-    for (const selector of shadowSelectors) {
-      const elements = shadowRoot.querySelectorAll(selector);
-      console.log(`[DOMObserver]   Shadow DOM trying "${selector}" → found ${elements.length}`);
-
-      elements.forEach((el) => {
-        const element = el as HTMLElement;
-
-        // Skip if already observed
-        if (this.observedElements.has(element)) {
-          console.log('[DOMObserver]     Already observed, skipping');
-          return;
-        }
-
-        // Check if visible
-        const visible = this.isVisible(element);
-        console.log(`[DOMObserver]     Visible: ${visible}`);
-
-        // For Shadow DOM, we trust that if it's a textbox/editor, it's the composer
-        const isEditor = element.hasAttribute('contenteditable') ||
-                        element.getAttribute('role') === 'textbox' ||
-                        element.classList.contains('ql-editor');
-
-        if (visible && isEditor) {
-          candidateElements.add(element);
-        }
-      });
-    }
-
-    // Second pass: filter out child elements if their parents are also candidates
-    const rootElements = Array.from(candidateElements).filter(element => {
-      for (const otherElement of candidateElements) {
-        if (otherElement !== element && otherElement.contains(element)) {
-          console.log('[DOMObserver]     Shadow DOM: Skipping child element');
-          return false;
-        }
-      }
-      return true;
-    });
-
-    // Third pass: notify only root elements
-    rootElements.forEach(element => {
-      foundAny = true;
-      this.observedElements.set(element, 'post-composer');
-      this.notifyCallbacks('post-composer', element);
-      console.log('[DOMObserver]     ✓ Shadow DOM composer detected and notified!', element.className.substring(0, 50));
-    });
-
-    if (!foundAny) {
-      console.log('[DOMObserver] No composer found in Shadow DOM');
-    }
-  }
 
   /**
    * Detect comment input boxes
@@ -399,43 +276,6 @@ export class LinkedInDOMObserver {
     );
   }
 
-  /**
-   * Check if element is actually a post composer
-   */
-  private isPostComposer(element: HTMLElement): boolean {
-    // For Shadow DOM elements, check if it's a textbox/editor
-    const isShadowDOMEditor =
-      element.getRootNode() !== document && (
-        element.getAttribute('role') === 'textbox' ||
-        element.classList.contains('ql-editor') ||
-        element.getAttribute('contenteditable') === 'true'
-      );
-
-    if (isShadowDOMEditor) {
-      console.log('[DOMObserver]     Element is in Shadow DOM and looks like an editor');
-      return true;
-    }
-
-    // For regular DOM: Must be in feed or on homepage
-    const isInFeed = element.closest('.feed-shared-update-v2__container') ||
-                     element.closest('.share-box-feed-entry') ||
-                     element.closest('.share-creation-state') ||
-                     element.closest('[role="dialog"]'); // Include modals
-
-    // Must have post-related attributes or classes
-    const hasPostAttributes =
-      element.getAttribute('data-test-share-box-text-editor') !== null ||
-      element.getAttribute('data-test-ql-editor-contenteditable') !== null ||
-      element.className.includes('share') ||
-      element.className.includes('ql-editor') ||
-      element.getAttribute('contenteditable') === 'true' ||
-      element.getAttribute('role') === 'textbox';
-
-    const result = !!(isInFeed || hasPostAttributes);
-    console.log(`[DOMObserver]     isPostComposer check: isInFeed=${!!isInFeed}, hasPostAttributes=${!!hasPostAttributes}, result=${result}`);
-
-    return result;
-  }
 
   /**
    * Find post ID from element or parents

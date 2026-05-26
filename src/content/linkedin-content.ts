@@ -186,16 +186,29 @@ function handleGeneratePost(composerElement: HTMLElement) {
 // Handle Improve Post button click
 function handleImprovePost(composerElement: HTMLElement) {
   console.log('[Content Script] Improve Post clicked');
+  console.log('[Content Script] Composer element:', composerElement.className);
 
-  // Get current post text
-  const textEditor = composerElement.querySelector('.ql-editor, [contenteditable="true"]') as HTMLElement;
+  // Get current post text - try multiple selectors
+  let textEditor = composerElement.querySelector('.ql-editor') as HTMLElement;
+  if (!textEditor) {
+    textEditor = composerElement.querySelector('[contenteditable="true"]') as HTMLElement;
+  }
 
-  if (!textEditor || !textEditor.textContent?.trim()) {
+  console.log('[Content Script] Text editor found:', !!textEditor);
+  console.log('[Content Script] Text editor content:', textEditor?.textContent?.substring(0, 100));
+
+  if (!textEditor) {
+    alert('Could not find the text editor.\n\nPlease try again.');
+    return;
+  }
+
+  const currentText = textEditor.textContent?.trim() || '';
+
+  if (!currentText) {
     alert('Please write something first!\n\nThe Improve Post feature enhances your existing draft.');
     return;
   }
 
-  const currentText = textEditor.textContent.trim();
   console.log('[Content Script] Current post text:', currentText.substring(0, 50) + '...');
 
   // Open modal with current text
