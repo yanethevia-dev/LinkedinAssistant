@@ -102,27 +102,47 @@ export class UIInjector {
    * Find the best place to inject buttons in a post composer
    */
   private findPostComposerInjectionPoint(composerElement: HTMLElement): HTMLElement | null {
-    // Strategy 1: Look for footer/action bar
+    console.log('[UIInjector] Finding injection point for:', composerElement.className);
+
+    // Strategy 1: Look for footer/action bar in or near the composer
     const footerSelectors = [
       '.share-creation-state__footer',
       '.share-box-footer',
       '.share-actions__footer',
-      '[class*="share"][class*="footer"]'
+      '[class*="share"][class*="footer"]',
+      '.msg-form__footer'  // For message/post forms
     ];
 
+    // First try: search inside the composer element
     for (const selector of footerSelectors) {
       const footer = composerElement.querySelector(selector) as HTMLElement;
       if (footer) {
-        console.log('[UIInjector] Found footer for injection:', selector);
+        console.log('[UIInjector] Found footer inside composer:', selector);
         return footer;
       }
+    }
+
+    // Second try: search in parent containers (go up the tree)
+    let parent = composerElement.parentElement;
+    let depth = 0;
+    while (parent && depth < 10) { // Limit depth to avoid going too far up
+      for (const selector of footerSelectors) {
+        const footer = parent.querySelector(selector) as HTMLElement;
+        if (footer) {
+          console.log('[UIInjector] Found footer in parent (depth', depth, '):', selector);
+          return footer;
+        }
+      }
+      parent = parent.parentElement;
+      depth++;
     }
 
     // Strategy 2: Look for button container
     const buttonContainerSelectors = [
       '.share-actions',
       '.share-box-footer__buttons',
-      '[class*="share"][class*="action"]'
+      '[class*="share"][class*="action"]',
+      '.msg-form__contenteditable-container' // Container for editable content
     ];
 
     for (const selector of buttonContainerSelectors) {
@@ -133,9 +153,31 @@ export class UIInjector {
       }
     }
 
-    // Strategy 3: Create our own container at the end
-    console.log('[UIInjector] Creating custom injection point');
-    return composerElement;
+    // Strategy 3: Look for the root of the composer modal/dialog
+    const rootContainerSelectors = [
+      '[role="dialog"]',
+      '.share-creation-state',
+      '.artdeco-modal',
+      '.msg-overlay-conversation-bubble'
+    ];
+
+    parent = composerElement.parentElement;
+    depth = 0;
+    while (parent && depth < 10) {
+      for (const selector of rootContainerSelectors) {
+        if (parent.matches(selector)) {
+          console.log('[UIInjector] Found root container (depth', depth, '):', selector);
+          // Try to append after the composer element itself
+          return parent;
+        }
+      }
+      parent = parent.parentElement;
+      depth++;
+    }
+
+    // Strategy 4: Insert directly after the composer element
+    console.log('[UIInjector] Using composer element itself as injection point');
+    return composerElement.parentElement || composerElement;
   }
 
   /**
@@ -144,13 +186,21 @@ export class UIInjector {
   private createButtonContainer(): HTMLElement {
     const container = document.createElement('div');
     container.className = 'lia-button-container';
+    container.id = `lia-container-${++this.buttonIdCounter}`;
     container.style.cssText = `
-      display: flex;
+      display: flex !important;
       gap: 8px;
       align-items: center;
-      margin: 8px 0;
+      margin: 12px 0;
+      padding: 8px;
       flex-wrap: wrap;
+      background: rgba(0, 102, 194, 0.05);
+      border-radius: 8px;
+      border: 1px solid rgba(0, 102, 194, 0.2);
+      z-index: 999;
+      position: relative;
     `;
+    console.log('[UIInjector] Created button container:', container.id);
     return container;
   }
 
@@ -162,7 +212,7 @@ export class UIInjector {
     type: 'generate' | 'improve';
     onClick: () => void;
   }): InjectedButton {
-    const buttonId = `lia-btn-${config.type}-${++this.buttonIdCounter}`;
+    const buttonId = `lia-btn-${config.type}-${this.buttonIdCounter}`;
     const button = document.createElement('button');
 
     button.id = buttonId;
@@ -170,24 +220,32 @@ export class UIInjector {
     button.textContent = config.text;
     button.type = 'button'; // Prevent form submission
 
-    // Styling
+    // Styling with !important to override LinkedIn styles
     button.style.cssText = `
-      padding: 8px 16px;
-      border: none;
-      border-radius: 16px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 10px 20px !important;
+      border: none !important;
+      border-radius: 20px !important;
+      font-size: 14px !important;
+      font-weight: 600 !important;
+      cursor: pointer !important;
+      transition: all 0.2s ease !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 6px !important;
+      min-height: 40px !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+      position: relative !important;
+      z-index: 1000 !important;
+      white-space: nowrap !important;
       ${config.type === 'generate'
-        ? 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;'
-        : 'background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;'
+        ? 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: white !important;'
+        : 'background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important; color: white !important;'
       }
     `;
+
+    console.log('[UIInjector] Created button:', buttonId, config.text);
 
     // Hover effects
     button.addEventListener('mouseenter', () => {
