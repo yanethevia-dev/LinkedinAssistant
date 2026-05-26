@@ -104,15 +104,25 @@ export class UIInjector {
   private findPostComposerInjectionPoint(composerElement: HTMLElement): HTMLElement | null {
     console.log('[UIInjector] Finding injection point...');
 
-    // Look for the editor inside the dialog
-    const editor = composerElement.querySelector('[contenteditable="true"], .ql-editor') as HTMLElement;
+    // Look for the editor inside the dialog (try multiple types)
+    let editor = composerElement.querySelector('.ql-editor') as HTMLElement;
+    if (!editor) {
+      editor = composerElement.querySelector('.tiptap') as HTMLElement; // TipTap (LinkedIn 2026)
+    }
+    if (!editor) {
+      editor = composerElement.querySelector('.ProseMirror') as HTMLElement; // ProseMirror
+    }
+    if (!editor) {
+      editor = composerElement.querySelector('[contenteditable]') as HTMLElement; // ANY contenteditable
+    }
 
     if (editor) {
-      console.log('[UIInjector] Found editor, inserting after it');
+      console.log('[UIInjector] Found editor:', editor.className);
+      console.log('[UIInjector] Inserting buttons after editor parent');
       return editor.parentElement || composerElement;
     }
 
-    console.log('[UIInjector] Using dialog itself');
+    console.log('[UIInjector] No editor found, using dialog itself');
     return composerElement;
   }
 

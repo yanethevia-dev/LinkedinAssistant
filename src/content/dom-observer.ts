@@ -168,14 +168,18 @@ export class LinkedInDOMObserver {
         return;
       }
 
-      // Check if it contains a post editor (contenteditable or .ql-editor)
-      const editor1 = dialogEl.querySelector('[contenteditable="true"]');
+      // Check if it contains a post editor (contenteditable, .ql-editor, .tiptap, .ProseMirror)
+      const editor1 = dialogEl.querySelector('[contenteditable]'); // ANY contenteditable (true, plaintext-only, etc)
       const editor2 = dialogEl.querySelector('.ql-editor');
+      const editor3 = dialogEl.querySelector('.tiptap'); // TipTap editor (LinkedIn 2026)
+      const editor4 = dialogEl.querySelector('.ProseMirror'); // ProseMirror (TipTap uses this)
       console.log(`[DOMObserver]   Searching for editor:`);
-      console.log(`[DOMObserver]     [contenteditable="true"]: ${!!editor1}`);
+      console.log(`[DOMObserver]     [contenteditable]: ${!!editor1}`);
       console.log(`[DOMObserver]     .ql-editor: ${!!editor2}`);
+      console.log(`[DOMObserver]     .tiptap: ${!!editor3}`);
+      console.log(`[DOMObserver]     .ProseMirror: ${!!editor4}`);
 
-      const hasEditor = editor1 || editor2;
+      const hasEditor = editor1 || editor2 || editor3 || editor4;
 
       if (hasEditor) {
         console.log('[DOMObserver]   ✓✓✓ DIALOG WITH EDITOR FOUND! ✓✓✓');

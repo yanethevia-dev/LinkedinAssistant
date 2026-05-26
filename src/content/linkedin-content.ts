@@ -188,13 +188,20 @@ function handleImprovePost(composerElement: HTMLElement) {
   console.log('[Content Script] Improve Post clicked');
   console.log('[Content Script] Composer element:', composerElement.className);
 
-  // Get current post text - try multiple selectors
+  // Get current post text - try multiple selectors for different editor types
   let textEditor = composerElement.querySelector('.ql-editor') as HTMLElement;
   if (!textEditor) {
-    textEditor = composerElement.querySelector('[contenteditable="true"]') as HTMLElement;
+    textEditor = composerElement.querySelector('.tiptap') as HTMLElement; // TipTap editor (LinkedIn 2026)
+  }
+  if (!textEditor) {
+    textEditor = composerElement.querySelector('.ProseMirror') as HTMLElement; // ProseMirror
+  }
+  if (!textEditor) {
+    textEditor = composerElement.querySelector('[contenteditable]') as HTMLElement; // ANY contenteditable
   }
 
   console.log('[Content Script] Text editor found:', !!textEditor);
+  console.log('[Content Script] Text editor type:', textEditor?.className);
   console.log('[Content Script] Text editor content:', textEditor?.textContent?.substring(0, 100));
 
   if (!textEditor) {
