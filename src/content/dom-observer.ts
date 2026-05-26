@@ -175,6 +175,9 @@ export class LinkedInDOMObserver {
     console.log('[DOMObserver] Scanning regular DOM...');
 
     let foundAny = false;
+    const candidateElements = new Set<HTMLElement>();
+
+    // First pass: collect all candidate elements
     for (const selector of selectors) {
       const elements = document.querySelectorAll(selector);
       console.log(`[DOMObserver]   Trying "${selector}" → found ${elements.length}`);
@@ -192,15 +195,31 @@ export class LinkedInDOMObserver {
         const isComposer = this.isPostComposer(element);
         console.log(`[DOMObserver]     Visible: ${visible}, IsComposer: ${isComposer}`);
 
-        // Check if it's actually visible and part of post composer
         if (visible && isComposer) {
-          foundAny = true;
-          this.observedElements.set(element, 'post-composer');
-          this.notifyCallbacks('post-composer', element);
-          console.log('[DOMObserver]     ✓ Detected and notified!');
+          candidateElements.add(element);
         }
       });
     }
+
+    // Second pass: filter out child elements if their parents are also candidates
+    const rootElements = Array.from(candidateElements).filter(element => {
+      // Check if any other candidate contains this element
+      for (const otherElement of candidateElements) {
+        if (otherElement !== element && otherElement.contains(element)) {
+          console.log('[DOMObserver]     Skipping child element, parent already detected');
+          return false; // This element is a child of another candidate
+        }
+      }
+      return true; // This is a root element
+    });
+
+    // Third pass: notify only root elements
+    rootElements.forEach(element => {
+      foundAny = true;
+      this.observedElements.set(element, 'post-composer');
+      this.notifyCallbacks('post-composer', element);
+      console.log('[DOMObserver]     ✓ Detected and notified!', element.className.substring(0, 50));
+    });
 
     if (!foundAny) {
       console.log('[DOMObserver] No post composer found in this scan');
@@ -222,7 +241,9 @@ export class LinkedInDOMObserver {
     ];
 
     let foundAny = false;
+    const candidateElements = new Set<HTMLElement>();
 
+    // First pass: collect all candidate elements
     for (const selector of shadowSelectors) {
       const elements = shadowRoot.querySelectorAll(selector);
       console.log(`[DOMObserver]   Shadow DOM trying "${selector}" → found ${elements.length}`);
@@ -246,13 +267,29 @@ export class LinkedInDOMObserver {
                         element.classList.contains('ql-editor');
 
         if (visible && isEditor) {
-          foundAny = true;
-          this.observedElements.set(element, 'post-composer');
-          this.notifyCallbacks('post-composer', element);
-          console.log('[DOMObserver]     ✓ Shadow DOM composer detected and notified!');
+          candidateElements.add(element);
         }
       });
     }
+
+    // Second pass: filter out child elements if their parents are also candidates
+    const rootElements = Array.from(candidateElements).filter(element => {
+      for (const otherElement of candidateElements) {
+        if (otherElement !== element && otherElement.contains(element)) {
+          console.log('[DOMObserver]     Shadow DOM: Skipping child element');
+          return false;
+        }
+      }
+      return true;
+    });
+
+    // Third pass: notify only root elements
+    rootElements.forEach(element => {
+      foundAny = true;
+      this.observedElements.set(element, 'post-composer');
+      this.notifyCallbacks('post-composer', element);
+      console.log('[DOMObserver]     ✓ Shadow DOM composer detected and notified!', element.className.substring(0, 50));
+    });
 
     if (!foundAny) {
       console.log('[DOMObserver] No composer found in Shadow DOM');
