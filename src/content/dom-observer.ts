@@ -134,42 +134,61 @@ export class LinkedInDOMObserver {
   }
 
   /**
-   * Detect the main post composer - SIMPLIFIED
+   * Detect the main post composer - SIMPLIFIED WITH DEBUGGING
    */
   private detectPostComposer() {
-    console.log('[DOMObserver] Scanning for post composer...');
+    console.log('[DOMObserver] === Scanning for post composer ===');
 
     // SIMPLE: Solo buscar el modal/dialog cuando se abre
     const dialogs = document.querySelectorAll('[role="dialog"]');
 
     console.log(`[DOMObserver] Found ${dialogs.length} dialogs`);
 
-    dialogs.forEach((dialog) => {
+    if (dialogs.length === 0) {
+      console.log('[DOMObserver] ⚠️ NO DIALOGS FOUND - this is normal if modal is closed');
+      return;
+    }
+
+    dialogs.forEach((dialog, index) => {
       const dialogEl = dialog as HTMLElement;
+      console.log(`[DOMObserver] Checking dialog ${index + 1}/${dialogs.length}:`);
 
       // Skip if already observed
       if (this.observedElements.has(dialogEl)) {
-        console.log('[DOMObserver]   Dialog already observed, skipping');
+        console.log('[DOMObserver]   ✗ Already observed, skipping');
         return;
       }
 
       // Check if it's visible
-      if (!this.isVisible(dialogEl)) {
-        console.log('[DOMObserver]   Dialog not visible, skipping');
+      const visible = this.isVisible(dialogEl);
+      console.log(`[DOMObserver]   Visible: ${visible} (width: ${dialogEl.offsetWidth}, height: ${dialogEl.offsetHeight})`);
+
+      if (!visible) {
+        console.log('[DOMObserver]   ✗ Not visible, skipping');
         return;
       }
 
       // Check if it contains a post editor (contenteditable or .ql-editor)
-      const hasEditor = dialogEl.querySelector('[contenteditable="true"], .ql-editor');
+      const editor1 = dialogEl.querySelector('[contenteditable="true"]');
+      const editor2 = dialogEl.querySelector('.ql-editor');
+      console.log(`[DOMObserver]   Searching for editor:`);
+      console.log(`[DOMObserver]     [contenteditable="true"]: ${!!editor1}`);
+      console.log(`[DOMObserver]     .ql-editor: ${!!editor2}`);
+
+      const hasEditor = editor1 || editor2;
 
       if (hasEditor) {
-        console.log('[DOMObserver]   ✓ Dialog with editor found!');
+        console.log('[DOMObserver]   ✓✓✓ DIALOG WITH EDITOR FOUND! ✓✓✓');
+        console.log('[DOMObserver]   Marking as observed and notifying callbacks...');
         this.observedElements.set(dialogEl, 'post-composer');
         this.notifyCallbacks('post-composer', dialogEl);
+        console.log('[DOMObserver]   ✓ Callback notification sent!');
       } else {
-        console.log('[DOMObserver]   Dialog has no editor, skipping');
+        console.log('[DOMObserver]   ✗ Dialog has no editor, skipping');
       }
     });
+
+    console.log('[DOMObserver] === Scan complete ===');
   }
 
 
