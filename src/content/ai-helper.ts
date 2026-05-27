@@ -101,7 +101,165 @@ TAREAS:
   }
 
   /**
-   * Generate CV from profile data
+   * Generate OPTIMIZED CV from profile data (improved version)
+   */
+  async generateOptimizedCV(profileData: any): Promise<string> {
+    try {
+      let prompt = `Genera un CV PROFESIONAL Y OPTIMIZADO usando estos datos de LinkedIn:\n\n`;
+      prompt += `NOMBRE: ${profileData.name}\n`;
+      prompt += `TÍTULO PROFESIONAL: ${profileData.headline}\n\n`;
+
+      if (profileData.about) {
+        prompt += `ACERCA DE:\n${profileData.about}\n\n`;
+      }
+
+      if (profileData.experiences && profileData.experiences.length > 0) {
+        prompt += `EXPERIENCIA LABORAL:\n`;
+        profileData.experiences.forEach((exp: any, idx: number) => {
+          prompt += `\n${idx + 1}. ${exp.title || 'Posición'}\n`;
+          if (exp.company) prompt += `   Empresa: ${exp.company}\n`;
+          if (exp.duration) prompt += `   Período: ${exp.duration}\n`;
+          if (exp.description) prompt += `   Descripción: ${exp.description}\n`;
+        });
+        prompt += `\n`;
+      }
+
+      if (profileData.education && profileData.education.length > 0) {
+        prompt += `EDUCACIÓN:\n`;
+        profileData.education.forEach((edu: any, idx: number) => {
+          prompt += `${idx + 1}. ${edu.degree || edu.institution}\n`;
+          if (edu.institution && edu.degree) prompt += `   Institución: ${edu.institution}\n`;
+          if (edu.year) prompt += `   Año: ${edu.year}\n`;
+        });
+        prompt += `\n`;
+      }
+
+      prompt += `IMPORTANTE: Optimiza y mejora el CV:\n`;
+      prompt += `• Crea un resumen profesional impactante al inicio\n`;
+      prompt += `• Transforma experiencias en logros cuantificables\n`;
+      prompt += `• Usa verbos de acción potentes\n`;
+      prompt += `• Resalta habilidades técnicas y competencias clave\n`;
+      prompt += `• Formato profesional con secciones claras\n`;
+      prompt += `• Orientado a resultados y logros, no solo tareas\n`;
+
+      const response = await this.callAI({
+        systemPrompt: `Eres un experto en recursos humanos y escritura de CVs profesionales.
+
+OBJETIVO: Crear un CV OPTIMIZADO Y ATRACTIVO que destaque los logros y fortalezas del candidato.
+
+ESTRUCTURA:
+1. RESUMEN PROFESIONAL (3-4 líneas impactantes)
+2. EXPERIENCIA PROFESIONAL (ordenada cronológicamente, enfocada en logros)
+3. EDUCACIÓN
+4. HABILIDADES CLAVE (técnicas y blandas)
+5. LOGROS DESTACADOS (si aplica)
+
+FORMATO:
+• Usa MAYÚSCULAS para secciones
+• Usa viñetas (•) para listas
+• Cuantifica logros cuando sea posible (%, números, métricas)
+• Verbos de acción: Lideré, Implementé, Optimicé, Desarrollé
+• Formato claro y escaneable (ATS-friendly)
+• NO uses markdown, solo texto plano con formato
+
+TONO: Profesional, directo, orientado a logros`,
+        userPrompt: prompt,
+        temperature: 0.7,
+        maxTokens: 2000
+      });
+
+      return response.content;
+    } catch (error: any) {
+      console.error('[AIHelper] Error generating optimized CV:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate TARGETED CV adapted to specific job posting
+   */
+  async generateTargetedCV(profileData: any, jobPosting: string): Promise<string> {
+    try {
+      let prompt = `Genera un CV ADAPTADO ESPECÍFICAMENTE para esta oferta de empleo:\n\n`;
+      prompt += `=== OFERTA DE EMPLEO ===\n${jobPosting}\n\n`;
+      prompt += `=== DATOS DEL CANDIDATO ===\n\n`;
+      prompt += `NOMBRE: ${profileData.name}\n`;
+      prompt += `TÍTULO: ${profileData.headline}\n\n`;
+
+      if (profileData.about) {
+        prompt += `ACERCA DE:\n${profileData.about}\n\n`;
+      }
+
+      if (profileData.experiences && profileData.experiences.length > 0) {
+        prompt += `EXPERIENCIA:\n`;
+        profileData.experiences.forEach((exp: any, idx: number) => {
+          prompt += `\n${idx + 1}. ${exp.title || 'Posición'}\n`;
+          if (exp.company) prompt += `   Empresa: ${exp.company}\n`;
+          if (exp.duration) prompt += `   Período: ${exp.duration}\n`;
+          if (exp.description) prompt += `   Descripción: ${exp.description}\n`;
+        });
+        prompt += `\n`;
+      }
+
+      if (profileData.education && profileData.education.length > 0) {
+        prompt += `EDUCACIÓN:\n`;
+        profileData.education.forEach((edu: any, idx: number) => {
+          prompt += `${idx + 1}. ${edu.degree || edu.institution}\n`;
+          if (edu.institution && edu.degree) prompt += `   Institución: ${edu.institution}\n`;
+          if (edu.year) prompt += `   Año: ${edu.year}\n`;
+        });
+        prompt += `\n`;
+      }
+
+      prompt += `ADAPTA EL CV:\n`;
+      prompt += `• Resalta las habilidades y experiencias que coincidan con los requisitos\n`;
+      prompt += `• Usa el mismo lenguaje y keywords de la oferta\n`;
+      prompt += `• Enfatiza logros relevantes para este puesto específico\n`;
+      prompt += `• Prioriza experiencia relacionada\n`;
+      prompt += `• Demuestra cómo encajas perfectamente en el rol\n`;
+
+      const response = await this.callAI({
+        systemPrompt: `Eres un experto en recursos humanos especializado en OPTIMIZACIÓN DE CVs PARA OFERTAS ESPECÍFICAS.
+
+OBJETIVO: Crear un CV PERFECTAMENTE ADAPTADO a la oferta de empleo proporcionada.
+
+ESTRATEGIA:
+1. Analiza los requisitos clave de la oferta
+2. Identifica las habilidades y experiencias del candidato que coinciden
+3. Resalta esas coincidencias de forma prominente
+4. Usa las mismas palabras clave y terminología de la oferta
+5. Estructura el CV para que el reclutador vea inmediatamente el "match"
+
+ESTRUCTURA:
+1. RESUMEN PROFESIONAL (adaptado al rol específico)
+2. HABILIDADES CLAVE (que coincidan con requisitos)
+3. EXPERIENCIA RELEVANTE (enfocada en lo que pide la oferta)
+4. EDUCACIÓN
+5. LOGROS DESTACADOS (relacionados con el puesto)
+
+FORMATO:
+• MAYÚSCULAS para secciones
+• Viñetas (•) para listas
+• Keywords de la oferta integradas naturalmente
+• Cuantifica logros
+• ATS-friendly (sistemas de tracking de candidatos)
+• NO uses markdown, solo texto plano
+
+TONO: Profesional, específico, orientado a demostrar que el candidato es PERFECTO para este rol`,
+        userPrompt: prompt,
+        temperature: 0.7,
+        maxTokens: 2500
+      });
+
+      return response.content;
+    } catch (error: any) {
+      console.error('[AIHelper] Error generating targeted CV:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate CV from profile data (legacy - basic version)
    */
   async generateCV(profileData: any): Promise<string> {
     try {

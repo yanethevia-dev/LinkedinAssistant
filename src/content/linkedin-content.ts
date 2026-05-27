@@ -308,44 +308,8 @@ async function handleGenerateCV() {
     }
   }
 
-  // Show confirmation and generate CV
-  modal.open({
-    title: '📄 Generar mi CV',
-    description: `He extraído tu perfil:\n\n• Nombre: ${profileData.name}\n• Título: ${profileData.headline}\n• Experiencias: ${profileData.experienceCount}\n• Educación: ${profileData.educationCount}\n\n¿Generar CV profesional con IA?`,
-    placeholder: 'Agrega notas adicionales (opcional)...',
-    primaryButton: 'Generar CV',
-    secondaryButton: 'Cancelar',
-    maxLength: 500,
-    showCharCount: false,
-    onPrimary: async (notes: string) => {
-      console.log('[Content Script] Generating CV...');
-
-      try {
-        modal.close();
-
-        // Show loading toast
-        showSuccessToast('⏳ Generando CV con IA...');
-
-        // Call AI service to generate CV
-        const cvText = await aiHelper.generateCV(profileData);
-        console.log('[Content Script] CV generated successfully');
-
-        // Show CV with download options
-        showCVWithDownloadOptions(cvText, profileData.name);
-
-        showSuccessToast('✅ CV generado con IA');
-      } catch (error: any) {
-        console.error('[Content Script] Error generating CV:', error);
-        alert(`❌ Error al generar CV:\n\n${error.message}\n\nVerifica tu configuración de IA en Settings.`);
-      }
-    },
-    onSecondary: () => {
-      console.log('[Content Script] CV generation cancelled');
-    },
-    onClose: () => {
-      console.log('[Content Script] Modal closed');
-    }
-  });
+  // Show CV generation modal with job posting option
+  showCVGenerationModal(profileData);
 }
 
 // Handle Improve Profile (floating button)
@@ -935,6 +899,310 @@ function extractProfileData(detailed = false) {
   }
 
   return data;
+}
+
+// Helper: Show CV generation modal with job posting option
+function showCVGenerationModal(profileData: any) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    animation: fadeIn 0.2s ease;
+  `;
+
+  const modalContainer = document.createElement('div');
+  modalContainer.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 700px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  `;
+
+  // Header
+  const header = document.createElement('div');
+  header.style.cssText = `
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid #e0e0e0;
+  `;
+  header.innerHTML = `
+    <h2 style="margin: 0; font-size: 24px; font-weight: 600; color: #333;">📄 Generar CV con IA</h2>
+    <p style="margin: 8px 0 0; color: #666; font-size: 14px;">La IA optimizará tu CV para hacerlo más profesional y atractivo</p>
+  `;
+
+  // Content
+  const content = document.createElement('div');
+  content.style.cssText = `
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+  `;
+
+  // Profile summary
+  const summary = document.createElement('div');
+  summary.style.cssText = `
+    background: #f0f7ff;
+    border: 1px solid #c5e1ff;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+  `;
+  summary.innerHTML = `
+    <h3 style="margin: 0 0 12px; font-size: 16px; font-weight: 600; color: #0a66c2;">📋 Datos Extraídos</h3>
+    <ul style="margin: 0; padding-left: 20px; color: #333; font-size: 14px; line-height: 1.8;">
+      <li><strong>Nombre:</strong> ${profileData.name}</li>
+      <li><strong>Título:</strong> ${profileData.headline || 'No disponible'}</li>
+      <li><strong>Experiencias:</strong> ${profileData.experienceCount} posiciones</li>
+      <li><strong>Educación:</strong> ${profileData.educationCount} entradas</li>
+    </ul>
+  `;
+  content.appendChild(summary);
+
+  // Option selector
+  const optionSelector = document.createElement('div');
+  optionSelector.style.cssText = `
+    margin-bottom: 20px;
+  `;
+  optionSelector.innerHTML = `
+    <label style="display: block; font-weight: 600; margin-bottom: 12px; color: #333; font-size: 15px;">
+      🎯 Tipo de CV
+    </label>
+  `;
+
+  const radioContainer = document.createElement('div');
+  radioContainer.style.cssText = `
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  `;
+
+  const createRadioOption = (id: string, label: string, description: string, checked: boolean = false) => {
+    const option = document.createElement('label');
+    option.style.cssText = `
+      display: flex;
+      align-items: start;
+      padding: 14px;
+      border: 2px solid ${checked ? '#0a66c2' : '#e0e0e0'};
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: ${checked ? '#f0f7ff' : 'white'};
+    `;
+
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'cvType';
+    radio.id = id;
+    radio.checked = checked;
+    radio.style.cssText = `
+      margin-top: 2px;
+      margin-right: 12px;
+      cursor: pointer;
+    `;
+
+    const textContainer = document.createElement('div');
+    textContainer.innerHTML = `
+      <div style="font-weight: 600; color: #333; margin-bottom: 4px; font-size: 14px;">${label}</div>
+      <div style="color: #666; font-size: 13px; line-height: 1.4;">${description}</div>
+    `;
+
+    option.appendChild(radio);
+    option.appendChild(textContainer);
+
+    // Update styling on change
+    radio.onchange = () => {
+      document.querySelectorAll('label[data-radio-option]').forEach(opt => {
+        const optEl = opt as HTMLElement;
+        const radioEl = optEl.querySelector('input[type="radio"]') as HTMLInputElement;
+        if (radioEl.checked) {
+          optEl.style.border = '2px solid #0a66c2';
+          optEl.style.background = '#f0f7ff';
+        } else {
+          optEl.style.border = '2px solid #e0e0e0';
+          optEl.style.background = 'white';
+        }
+      });
+
+      // Show/hide job posting textarea
+      const jobPostingArea = document.getElementById('jobPostingArea');
+      if (radio.id === 'cvTargeted' && jobPostingArea) {
+        jobPostingArea.style.display = 'block';
+      } else if (jobPostingArea) {
+        jobPostingArea.style.display = 'none';
+      }
+    };
+
+    option.setAttribute('data-radio-option', 'true');
+    return option;
+  };
+
+  const generalOption = createRadioOption(
+    'cvGeneral',
+    '📄 CV General Optimizado',
+    'La IA mejorará tu CV de forma general: formato profesional, resumen impactante, logros destacados',
+    true
+  );
+
+  const targetedOption = createRadioOption(
+    'cvTargeted',
+    '🎯 CV Adaptado a Oferta de Empleo',
+    'Pega una oferta de empleo y la IA adaptará tu CV específicamente para esa posición'
+  );
+
+  radioContainer.appendChild(generalOption);
+  radioContainer.appendChild(targetedOption);
+  optionSelector.appendChild(radioContainer);
+  content.appendChild(optionSelector);
+
+  // Job posting textarea (hidden by default)
+  const jobPostingArea = document.createElement('div');
+  jobPostingArea.id = 'jobPostingArea';
+  jobPostingArea.style.cssText = `
+    display: none;
+    margin-top: 16px;
+  `;
+  jobPostingArea.innerHTML = `
+    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #333; font-size: 14px;">
+      📋 Pega la Oferta de Empleo
+    </label>
+    <textarea
+      id="jobPostingText"
+      placeholder="Pega aquí la descripción completa del trabajo, incluyendo:&#10;• Título del puesto&#10;• Requisitos y habilidades&#10;• Responsabilidades&#10;• Experiencia necesaria&#10;&#10;La IA analizará esto para adaptar tu CV..."
+      style="
+        width: 100%;
+        min-height: 200px;
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 13px;
+        line-height: 1.5;
+        resize: vertical;
+        box-sizing: border-box;
+      "
+    ></textarea>
+    <p style="margin: 8px 0 0; color: #666; font-size: 12px; font-style: italic;">
+      💡 Tip: Incluye toda la descripción del trabajo para mejores resultados
+    </p>
+  `;
+  content.appendChild(jobPostingArea);
+
+  modalContainer.appendChild(header);
+  modalContainer.appendChild(content);
+
+  // Footer
+  const footer = document.createElement('div');
+  footer.style.cssText = `
+    padding: 16px 24px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    gap: 12px;
+  `;
+
+  const generateBtn = document.createElement('button');
+  generateBtn.textContent = '✨ Generar CV con IA';
+  generateBtn.style.cssText = `
+    flex: 1;
+    padding: 14px 24px;
+    background: #0a66c2;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  `;
+  generateBtn.onmouseenter = () => generateBtn.style.background = '#004182';
+  generateBtn.onmouseleave = () => generateBtn.style.background = '#0a66c2';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancelar';
+  cancelBtn.style.cssText = `
+    padding: 14px 24px;
+    background: #f0f0f0;
+    color: #333;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  `;
+  cancelBtn.onmouseenter = () => cancelBtn.style.background = '#e0e0e0';
+  cancelBtn.onmouseleave = () => cancelBtn.style.background = '#f0f0f0';
+
+  generateBtn.onclick = async () => {
+    const cvType = (document.querySelector('input[name="cvType"]:checked') as HTMLInputElement)?.id;
+    const jobPosting = (document.getElementById('jobPostingText') as HTMLTextAreaElement)?.value || '';
+
+    if (cvType === 'cvTargeted' && !jobPosting.trim()) {
+      alert('⚠️ Por favor, pega la oferta de empleo antes de continuar.');
+      return;
+    }
+
+    // Close modal and generate
+    overlay.remove();
+    showSuccessToast('⏳ Generando CV optimizado con IA...');
+
+    try {
+      let cvText: string;
+
+      if (cvType === 'cvTargeted' && jobPosting.trim()) {
+        // Generate targeted CV
+        cvText = await aiHelper.generateTargetedCV(profileData, jobPosting);
+      } else {
+        // Generate optimized general CV
+        cvText = await aiHelper.generateOptimizedCV(profileData);
+      }
+
+      console.log('[Content Script] CV generated successfully');
+      showCVWithDownloadOptions(cvText, profileData.name);
+      showSuccessToast('✅ CV generado con IA');
+    } catch (error: any) {
+      console.error('[Content Script] Error generating CV:', error);
+      alert(`❌ Error al generar CV:\n\n${error.message}\n\nVerifica tu configuración de IA en Settings.`);
+    }
+  };
+
+  cancelBtn.onclick = () => {
+    overlay.remove();
+  };
+
+  footer.appendChild(generateBtn);
+  footer.appendChild(cancelBtn);
+  modalContainer.appendChild(footer);
+
+  overlay.appendChild(modalContainer);
+
+  // Close on overlay click
+  overlay.onclick = (e) => {
+    if (e.target === overlay) {
+      cancelBtn.click();
+    }
+  };
+
+  // Close on Escape
+  const handleEscape = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      cancelBtn.click();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+
+  document.body.appendChild(overlay);
 }
 
 // Helper: Show CV with download options
