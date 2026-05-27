@@ -597,104 +597,207 @@ function extractProfileData(detailed = false) {
       }
     }
 
-    // Headline (professional title) - usually the div/span right after the name
-    const headlineSelectors = [
-      'main h2 + div',                  // Div right after H2 (most common)
-      'main h2 ~ div',                  // Any sibling div after H2
-      '.text-body-medium[class*="break-words"]',
-      'div[class*="profile-headline"]',
-      'div.text-body-medium.break-words',
-      'div[class*="pv-text-details"] div.text-body-medium'
-    ];
+    // Headline (professional title) - NEW LinkedIn structure
+    // The headline is in a text block near the name, typically 100-300 chars with job description
+    console.log('[Content Script] Looking for headline...');
 
-    for (const selector of headlineSelectors) {
-      const element = document.querySelector(selector);
-      if (element?.textContent?.trim()) {
-        const text = element.textContent.trim();
-        // Headline should be longer than name and describe a role/position
-        if (text && text.length > 10 && text.length < 300 && text !== data.name) {
-          data.headline = text;
-          console.log('[Content Script] Headline found with selector:', selector);
-          break;
-        }
-      }
-    }
-
-    // If no headline found, try finding text near the name
-    if (!data.headline && data.name) {
-      console.log('[Content Script] Trying to find headline near name...');
+    if (data.name) {
       const mainContent = document.querySelector('main');
       if (mainContent) {
-        const allDivs = Array.from(mainContent.querySelectorAll('div, span'));
-        let foundName = false;
+        // Find text blocks that look like a headline
+        const allElements = Array.from(mainContent.querySelectorAll('div, span, p'));
 
-        for (const div of allDivs) {
-          const text = div.textContent?.trim() || '';
+        for (const el of allElements) {
+          const text = el.textContent?.trim() || '';
 
-          // Found the name element
-          if (text === data.name) {
-            foundName = true;
-            continue;
-          }
+          // Headline characteristics:
+          // - 50-300 chars (job title + description)
+          // - Contains job-related keywords (Engineer, Manager, Developer, etc.)
+          // - No or few children (direct text content)
+          // - Not the name itself
+          if (text &&
+              text.length > 50 &&
+              text.length < 300 &&
+              text !== data.name &&
+              !text.includes(data.name) &&
+              el.children.length < 3) {
 
-          // Next meaningful text after name could be headline
-          if (foundName && text && text.length > 10 && text.length < 300 &&
-              text !== data.name && div.children.length === 0) {
-            data.headline = text;
-            console.log('[Content Script] Headline found near name:', text.substring(0, 50));
-            break;
+            // Check if it contains job-related keywords
+            const jobKeywords = ['engineer', 'developer', 'manager', 'architect', 'designer', 'analyst',
+                                'consultant', 'specialist', 'lead', 'director', 'senior', 'junior',
+                                'coordinator', 'administrator', 'scientist', 'researcher'];
+
+            const lowerText = text.toLowerCase();
+            const hasJobKeyword = jobKeywords.some(keyword => lowerText.includes(keyword));
+
+            if (hasJobKeyword) {
+              data.headline = text;
+              console.log('[Content Script] Headline found:', text.substring(0, 80));
+              break;
+            }
           }
         }
       }
     }
 
-    // About section
-    const aboutSection = document.querySelector('#about')?.parentElement;
-    const aboutText = aboutSection?.querySelector('.inline-show-more-text, .display-flex span[aria-hidden="true"]');
-    data.about = aboutText?.textContent?.trim() || '';
-
-    // Experience
-    const experienceSection = document.querySelector('#experience')?.parentElement;
-    const experienceItems = experienceSection?.querySelectorAll('li.artdeco-list__item, li[class*="profile-section-card"]');
-    data.experienceCount = experienceItems?.length || 0;
-
-    if (detailed && experienceItems) {
-      experienceItems.forEach((item) => {
-        const titleEl = item.querySelector('[class*="profile-section-card__title"]');
-        const companyEl = item.querySelector('[class*="profile-section-card__subtitle"]');
-        const durationEl = item.querySelector('[class*="date-range"]');
-        const descriptionEl = item.querySelector('[class*="show-more-less"]');
-
-        if (titleEl) {
-          data.experiences.push({
-            title: titleEl.textContent?.trim() || '',
-            company: companyEl?.textContent?.trim() || '',
-            duration: durationEl?.textContent?.trim() || '',
-            description: descriptionEl?.textContent?.trim() || ''
-          });
-        }
-      });
+    if (!data.headline) {
+      console.log('[Content Script] ⚠️ Headline not found');
     }
 
-    // Education
-    const educationSection = document.querySelector('#education')?.parentElement;
-    const educationItems = educationSection?.querySelectorAll('li.artdeco-list__item, li[class*="profile-section-card"]');
-    data.educationCount = educationItems?.length || 0;
+    // About section - NEW LinkedIn structure (no IDs anymore)
+    console.log('[Content Script] Looking for About section...');
 
-    if (detailed && educationItems) {
-      educationItems.forEach((item) => {
-        const degreeEl = item.querySelector('[class*="profile-section-card__title"]');
-        const institutionEl = item.querySelector('[class*="profile-section-card__subtitle"]');
-        const yearEl = item.querySelector('[class*="date-range"]');
+    // Find "Acerca de" or "About" title
+    const allElements = Array.from(document.querySelectorAll('h2, h3, div'));
+    const aboutTitle = allElements.find(el => {
+      const text = el.textContent?.trim();
+      return text === 'Acerca de' || text === 'About';
+    });
 
-        if (degreeEl) {
-          data.education.push({
-            degree: degreeEl.textContent?.trim() || '',
-            institution: institutionEl?.textContent?.trim() || '',
-            year: yearEl?.textContent?.trim() || ''
-          });
+    if (aboutTitle) {
+      console.log('[Content Script] Found About title');
+
+      // Strategy 1: Look for next sibling
+      let sibling = aboutTitle.nextElementSibling;
+      let attempts = 0;
+
+      while (sibling && attempts < 5) {
+        const text = sibling.textContent?.trim();
+        if (text && text.length > 50 && text !== 'Acerca de' && text !== 'About') {
+          data.about = text;
+          console.log('[Content Script] About content found (next sibling):', text.substring(0, 80));
+          break;
         }
-      });
+        sibling = sibling.nextElementSibling;
+        attempts++;
+      }
+
+      // Strategy 2: Look in parent's next sibling
+      if (!data.about && aboutTitle.parentElement) {
+        const parentSibling = aboutTitle.parentElement.nextElementSibling;
+        if (parentSibling) {
+          const text = parentSibling.textContent?.trim();
+          if (text && text.length > 50) {
+            data.about = text;
+            console.log('[Content Script] About content found (parent sibling):', text.substring(0, 80));
+          }
+        }
+      }
+
+      // Strategy 3: Look in parent's children
+      if (!data.about && aboutTitle.parentElement) {
+        const parent = aboutTitle.parentElement;
+        for (const child of Array.from(parent.children)) {
+          if (child !== aboutTitle) {
+            const text = child.textContent?.trim();
+            if (text && text.length > 50 && !text.startsWith('Acerca de') && !text.startsWith('About')) {
+              data.about = text;
+              console.log('[Content Script] About content found (parent child):', text.substring(0, 80));
+              break;
+            }
+          }
+        }
+      }
+    } else {
+      console.log('[Content Script] ⚠️ About title not found');
+    }
+
+    if (!data.about) {
+      console.log('[Content Script] ⚠️ About content not found');
+    }
+
+    // Experience - Find by section title
+    console.log('[Content Script] Looking for Experience section...');
+
+    const experienceTitle = allElements.find(el => {
+      const text = el.textContent?.trim();
+      return text === 'Experiencia' || text === 'Experience';
+    });
+
+    if (experienceTitle) {
+      console.log('[Content Script] Found Experience title');
+
+      // Find the container with list items
+      let container = experienceTitle.parentElement;
+      let searchDepth = 0;
+
+      while (container && searchDepth < 5) {
+        const listItems = container.querySelectorAll('ul li, ol li, li');
+        if (listItems.length > 0) {
+          data.experienceCount = listItems.length;
+          console.log('[Content Script] Found', listItems.length, 'experience items');
+
+          if (detailed) {
+            Array.from(listItems).forEach((item) => {
+              // Try to extract job title, company, duration
+              const allText = item.textContent?.trim() || '';
+
+              // For now, just store the raw text
+              // TODO: Parse structured data (title, company, dates)
+              if (allText.length > 10) {
+                data.experiences.push({
+                  title: allText.substring(0, 100), // First 100 chars as title
+                  company: '',
+                  duration: '',
+                  description: allText
+                });
+              }
+            });
+          }
+          break;
+        }
+
+        container = container.parentElement;
+        searchDepth++;
+      }
+    } else {
+      console.log('[Content Script] ⚠️ Experience title not found');
+    }
+
+    // Education - Find by section title
+    console.log('[Content Script] Looking for Education section...');
+
+    const educationTitle = allElements.find(el => {
+      const text = el.textContent?.trim();
+      return text === 'Educación' || text === 'Education' || text === 'Formación';
+    });
+
+    if (educationTitle) {
+      console.log('[Content Script] Found Education title');
+
+      // Find the container with list items
+      let container = educationTitle.parentElement;
+      let searchDepth = 0;
+
+      while (container && searchDepth < 5) {
+        const listItems = container.querySelectorAll('ul li, ol li, li');
+        if (listItems.length > 0) {
+          data.educationCount = listItems.length;
+          console.log('[Content Script] Found', listItems.length, 'education items');
+
+          if (detailed) {
+            Array.from(listItems).forEach((item) => {
+              const allText = item.textContent?.trim() || '';
+
+              // For now, just store the raw text
+              // TODO: Parse structured data (degree, institution, year)
+              if (allText.length > 10) {
+                data.education.push({
+                  degree: allText.substring(0, 100),
+                  institution: '',
+                  year: allText
+                });
+              }
+            });
+          }
+          break;
+        }
+
+        container = container.parentElement;
+        searchDepth++;
+      }
+    } else {
+      console.log('[Content Script] ⚠️ Education title not found');
     }
 
     console.log('[Content Script] Profile data extracted:', {
