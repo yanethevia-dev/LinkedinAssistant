@@ -7,6 +7,7 @@ import { modal } from './modal';
 import { aiHelper } from './ai-helper';
 import { downloadAsTxt, downloadAsWord, downloadAsPDF } from './cv-exporter';
 import { showLanguageSelector } from './language-selector';
+import { showWritingStyleSelector, type WritingStyle } from './writing-style-selector';
 
 console.log('[LinkedIn Assistant] Content script loaded');
 console.log('[LinkedIn Assistant] URL:', window.location.href);
@@ -206,64 +207,69 @@ function initializeDOMObserver() {
 function handleGeneratePostWithAI() {
   console.log('[Content Script] Generate Post with AI clicked');
 
-  // First, show language selector
+  // Step 1: Show language selector
   showLanguageSelector('post', (language) => {
     console.log('[Content Script] Language selected:', language);
 
-    // Open modal to get the topic/idea
-    modal.open({
-      title: language === 'es' ? '✨ Generar Post con IA' : '✨ Generate Post with AI',
-      description: language === 'es'
-        ? '¿Sobre qué quieres escribir? Describe tu idea o tema y generaré un post completo para LinkedIn.'
-        : 'What do you want to write about? Describe your idea or topic and I\'ll generate a complete LinkedIn post.',
-      placeholder: language === 'es'
-        ? 'Ejemplo: "Anunciar el lanzamiento de nuestro nuevo producto" o "Compartir aprendizajes sobre trabajo remoto"...'
-        : 'Example: "Announce our new product launch" or "Share insights about remote work"...',
-      primaryButton: language === 'es' ? 'Generar Post' : 'Generate Post',
-      secondaryButton: language === 'es' ? 'Cancelar' : 'Cancel',
-      maxLength: 500,
-      showCharCount: true,
-      onPrimary: async (topic: string) => {
-        console.log('[Content Script] Generating post for topic:', topic);
+    // Step 2: Show writing style selector
+    showWritingStyleSelector(language, (writingStyle) => {
+      console.log('[Content Script] Writing style selected:', writingStyle);
 
-        try {
-          modal.close();
+      // Step 3: Open modal to get the topic/idea
+      modal.open({
+        title: language === 'es' ? '✨ Generar Post con IA' : '✨ Generate Post with AI',
+        description: language === 'es'
+          ? '¿Sobre qué quieres escribir? Describe tu idea o tema y generaré un post completo para LinkedIn.'
+          : 'What do you want to write about? Describe your idea or topic and I\'ll generate a complete LinkedIn post.',
+        placeholder: language === 'es'
+          ? 'Ejemplo: "Anunciar el lanzamiento de nuestro nuevo producto" o "Compartir aprendizajes sobre trabajo remoto"...'
+          : 'Example: "Announce our new product launch" or "Share insights about remote work"...',
+        primaryButton: language === 'es' ? 'Generar Post' : 'Generate Post',
+        secondaryButton: language === 'es' ? 'Cancelar' : 'Cancel',
+        maxLength: 500,
+        showCharCount: true,
+        onPrimary: async (topic: string) => {
+          console.log('[Content Script] Generating post for topic:', topic);
 
-          // Show loading toast
-          showSuccessToast(language === 'es' ? '⏳ Generando post con IA...' : '⏳ Generating post with AI...');
+          try {
+            modal.close();
 
-          // Call AI service to generate post with selected language
-          const generatedPost = await aiHelper.generatePost(topic, language);
-          console.log('[Content Script] Post generated successfully');
+            // Show loading toast
+            showSuccessToast(language === 'es' ? '⏳ Generando post con IA...' : '⏳ Generating post with AI...');
 
-          // Open LinkedIn composer
-          const startPostBtn = document.querySelector('[aria-label*="Start a post"], [aria-label*="Crear publicación"]') as HTMLElement;
+            // Call AI service to generate post with selected language and style
+            const generatedPost = await aiHelper.generatePost(topic, language, writingStyle);
+            console.log('[Content Script] Post generated successfully');
 
-          if (startPostBtn) {
-            startPostBtn.click();
-            console.log('[Content Script] LinkedIn composer opened');
+            // Open LinkedIn composer
+            const startPostBtn = document.querySelector('[aria-label*="Start a post"], [aria-label*="Crear publicación"]') as HTMLElement;
 
-            // Wait for composer to open and insert text
-            setTimeout(() => {
-              const success = insertTextIntoComposer(generatedPost);
-              if (!success) {
-                alert(`✅ ${language === 'es' ? 'Post generado' : 'Post generated'}:\n\n${generatedPost}\n\n❌ ${language === 'es' ? 'No se pudo insertar automáticamente. Cópialo manualmente.' : 'Could not insert automatically. Copy manually.'}`);
-              }
-            }, 1000);
-          } else {
-            alert(`✅ ${language === 'es' ? 'Post generado' : 'Post generated'}:\n\n${generatedPost}\n\n${language === 'es' ? '(Copia manualmente al compositor de LinkedIn)' : '(Copy manually to LinkedIn composer)'}`);
+            if (startPostBtn) {
+              startPostBtn.click();
+              console.log('[Content Script] LinkedIn composer opened');
+
+              // Wait for composer to open and insert text
+              setTimeout(() => {
+                const success = insertTextIntoComposer(generatedPost);
+                if (!success) {
+                  alert(`✅ ${language === 'es' ? 'Post generado' : 'Post generated'}:\n\n${generatedPost}\n\n❌ ${language === 'es' ? 'No se pudo insertar automáticamente. Cópialo manualmente.' : 'Could not insert automatically. Copy manually.'}`);
+                }
+              }, 1000);
+            } else {
+              alert(`✅ ${language === 'es' ? 'Post generado' : 'Post generated'}:\n\n${generatedPost}\n\n${language === 'es' ? '(Copia manualmente al compositor de LinkedIn)' : '(Copy manually to LinkedIn composer)'}`);
+            }
+          } catch (error: any) {
+            console.error('[Content Script] Error generating post:', error);
+            alert(`❌ ${language === 'es' ? 'Error al generar post' : 'Error generating post'}:\n\n${error.message}\n\n${language === 'es' ? 'Verifica tu configuración de IA en Settings.' : 'Check your AI settings in Settings.'}`);
           }
-        } catch (error: any) {
-          console.error('[Content Script] Error generating post:', error);
-          alert(`❌ ${language === 'es' ? 'Error al generar post' : 'Error generating post'}:\n\n${error.message}\n\n${language === 'es' ? 'Verifica tu configuración de IA en Settings.' : 'Check your AI settings in Settings.'}`);
+        },
+        onSecondary: () => {
+          console.log('[Content Script] Generate cancelled');
+        },
+        onClose: () => {
+          console.log('[Content Script] Modal closed');
         }
-      },
-      onSecondary: () => {
-        console.log('[Content Script] Generate cancelled');
-      },
-      onClose: () => {
-        console.log('[Content Script] Modal closed');
-      }
+      });
     });
   });
 }
@@ -398,47 +404,59 @@ function handleImprovePost(composerElement: HTMLElement) {
 
   console.log('[Content Script] Current post text:', currentText.substring(0, 50) + '...');
 
-  // Open modal with current text
-  modal.open({
-    title: '🚀 Improve Post',
-    description: 'I\'ll enhance your post to make it more engaging and professional. Edit if needed:',
-    placeholder: 'Your post content...',
-    initialValue: currentText,
-    primaryButton: 'Improve Post',
-    secondaryButton: 'Cancel',
-    maxLength: 3000,
-    showCharCount: true,
-    onPrimary: async (text: string) => {
-      console.log('[Content Script] Improving post:', text.substring(0, 50) + '...');
+  // Step 1: Show language selector
+  showLanguageSelector('post', (language) => {
+    console.log('[Content Script] Language selected for improvement:', language);
 
-      try {
-        modal.close();
+    // Step 2: Show writing style selector
+    showWritingStyleSelector(language, (writingStyle) => {
+      console.log('[Content Script] Writing style selected for improvement:', writingStyle);
 
-        // Show loading toast
-        showSuccessToast('⏳ Mejorando post con IA...');
+      // Step 3: Open modal with current text
+      modal.open({
+        title: language === 'es' ? '🚀 Mejorar Post' : '🚀 Improve Post',
+        description: language === 'es'
+          ? 'Mejoraré tu post para hacerlo más atractivo y profesional. Edita si es necesario:'
+          : 'I\'ll enhance your post to make it more engaging and professional. Edit if needed:',
+        placeholder: language === 'es' ? 'Tu contenido...' : 'Your post content...',
+        initialValue: currentText,
+        primaryButton: language === 'es' ? 'Mejorar Post' : 'Improve Post',
+        secondaryButton: language === 'es' ? 'Cancelar' : 'Cancel',
+        maxLength: 3000,
+        showCharCount: true,
+        onPrimary: async (text: string) => {
+          console.log('[Content Script] Improving post:', text.substring(0, 50) + '...');
 
-        // Call AI service to improve post
-        const improvedPost = await aiHelper.improvePost(text);
-        console.log('[Content Script] Post improved successfully');
+          try {
+            modal.close();
 
-        // Replace text in composer with improved version
-        textEditor.textContent = improvedPost;
-        const inputEvent = new Event('input', { bubbles: true });
-        textEditor.dispatchEvent(inputEvent);
+            // Show loading toast
+            showSuccessToast(language === 'es' ? '⏳ Mejorando post con IA...' : '⏳ Improving post with AI...');
 
-        // Show success notification
-        showSuccessToast('✅ Post mejorado con IA');
-      } catch (error: any) {
-        console.error('[Content Script] Error improving post:', error);
-        alert(`❌ Error al mejorar post:\n\n${error.message}\n\nVerifica tu configuración de IA en Settings.`);
-      }
-    },
-    onSecondary: () => {
-      console.log('[Content Script] Improve cancelled');
-    },
-    onClose: () => {
-      console.log('[Content Script] Modal closed');
-    }
+            // Call AI service to improve post with language and style
+            const improvedPost = await aiHelper.improvePost(text, language, writingStyle);
+            console.log('[Content Script] Post improved successfully');
+
+            // Replace text in composer with improved version
+            textEditor.textContent = improvedPost;
+            const inputEvent = new Event('input', { bubbles: true });
+            textEditor.dispatchEvent(inputEvent);
+
+            // Show success notification
+            showSuccessToast(language === 'es' ? '✅ Post mejorado con IA' : '✅ Post improved with AI');
+          } catch (error: any) {
+            console.error('[Content Script] Error improving post:', error);
+            alert(`❌ ${language === 'es' ? 'Error al mejorar post' : 'Error improving post'}:\n\n${error.message}\n\n${language === 'es' ? 'Verifica tu configuración de IA en Settings.' : 'Check your AI settings in Settings.'}`);
+          }
+        },
+        onSecondary: () => {
+          console.log('[Content Script] Improve cancelled');
+        },
+        onClose: () => {
+          console.log('[Content Script] Modal closed');
+        }
+      });
+    });
   });
 }
 

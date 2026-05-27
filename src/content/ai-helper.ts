@@ -2,6 +2,7 @@
 
 import { MessageTypes } from '../shared/constants';
 import type { AIRequest, AIResponse } from '../shared/types';
+import type { WritingStyle } from './writing-style-selector';
 
 export class AIHelper {
   /**
@@ -46,42 +47,82 @@ export class AIHelper {
   }
 
   /**
-   * Generate LinkedIn post from topic
+   * Generate LinkedIn post from topic with writing style
    */
-  async generatePost(topic: string, language: 'es' | 'en' = 'es', tone?: string, audience?: string): Promise<string> {
+  async generatePost(
+    topic: string,
+    language: 'es' | 'en' = 'es',
+    writingStyle?: WritingStyle
+  ): Promise<string> {
     try {
-      const systemPrompts = {
-        es: `Eres un experto en crear contenido viral para LinkedIn. Tu objetivo es generar posts profesionales, atractivos y optimizados para engagement EN ESPAÑOL.
+      // Style-specific instructions
+      const styleInstructions = {
+        professional: {
+          es: 'Tono PROFESIONAL Y CORPORATIVO: Formal, estructurado, ideal para anuncios oficiales. Lenguaje pulido y autoridad.',
+          en: 'PROFESSIONAL & CORPORATE tone: Formal, structured, ideal for official announcements. Polished language and authority.'
+        },
+        technical: {
+          es: 'Tono TÉCNICO SENIOR: Como un Senior Engineer. Profundidad técnica, menciona tecnologías, arquitecturas, best practices. Experto pero no pedante.',
+          en: 'TECHNICAL SENIOR tone: Like a Senior Engineer. Technical depth, mention technologies, architectures, best practices. Expert but not pedantic.'
+        },
+        casual: {
+          es: 'Tono CERCANO Y CASUAL: Conversacional, accesible, humano. EVITA sonar corporativo o robótico. Como hablarías con un colega en un café.',
+          en: 'FRIENDLY & CASUAL tone: Conversational, accessible, human. AVOID sounding corporate or robotic. Like talking to a colleague at a coffee shop.'
+        },
+        'recruiter-friendly': {
+          es: 'Tono ENFOCADO A RECRUITERS: Resalta skills, logros, experiencia. Incluye keywords que buscan reclutadores. Demuestra valor profesional claramente.',
+          en: 'RECRUITER-FRIENDLY tone: Highlight skills, achievements, experience. Include keywords recruiters search for. Demonstrate professional value clearly.'
+        },
+        founder: {
+          es: 'Tono ESTILO FOUNDER: Visionario, motivador, comparte insights de negocio y liderazgo. Habla de desafíos, aprendizajes, construcción de equipos.',
+          en: 'FOUNDER STYLE tone: Visionary, motivating, share business and leadership insights. Talk about challenges, learnings, team building.'
+        },
+        concise: {
+          es: 'Tono CONCISO Y DIRECTO: Breve, al punto, sin rodeos. Máximo impacto en pocas palabras. Sin fluff. Directo al grano.',
+          en: 'CONCISE & DIRECT tone: Brief, to the point, no fluff. Maximum impact in few words. Straight to the point.'
+        },
+        storytelling: {
+          es: 'Tono STORYTELLING: Narrativo y emocional. Cuenta una historia que conecta con la audiencia. Inicio, desarrollo, conclusión. Crea conexión emocional.',
+          en: 'STORYTELLING tone: Narrative and emotional. Tell a story that connects with audience. Beginning, development, conclusion. Create emotional connection.'
+        }
+      };
 
-REGLAS:
-- Usa un tono profesional pero accesible
+      const baseSystemPrompts = {
+        es: `Eres un experto en crear contenido viral para LinkedIn. Tu objetivo es generar posts atractivos y optimizados para engagement EN ESPAÑOL.
+
+REGLAS GENERALES:
 - Incluye emojis estratégicamente (máximo 3-4)
 - Estructura: Hook + Contenido + Call-to-action
-- Longitud ideal: 150-300 palabras
+- Longitud ideal: 150-300 palabras (ajusta según estilo)
 - Incluye espaciado con saltos de línea para legibilidad
 - Añade 3-5 hashtags relevantes al final
 - NO uses markdown, solo texto plano
 - ESCRIBE TODO EN ESPAÑOL`,
-        en: `You are an expert at creating viral content for LinkedIn. Your goal is to generate professional, engaging posts optimized for engagement IN ENGLISH.
+        en: `You are an expert at creating viral content for LinkedIn. Your goal is to generate engaging posts optimized for engagement IN ENGLISH.
 
-RULES:
-- Use a professional but accessible tone
+GENERAL RULES:
 - Include emojis strategically (maximum 3-4)
 - Structure: Hook + Content + Call-to-action
-- Ideal length: 150-300 words
+- Ideal length: 150-300 words (adjust based on style)
 - Include spacing with line breaks for readability
 - Add 3-5 relevant hashtags at the end
 - DO NOT use markdown, only plain text
 - WRITE EVERYTHING IN ENGLISH`
       };
 
+      // Build system prompt with style
+      let systemPrompt = baseSystemPrompts[language];
+      if (writingStyle && styleInstructions[writingStyle]) {
+        systemPrompt += '\n\n' + styleInstructions[writingStyle][language];
+      }
+
       const userPrompts = {
-        es: `Genera un post de LinkedIn sobre: "${topic}"${tone ? `\n\nTono: ${tone}` : ''}${audience ? `\n\nAudiencia: ${audience}` : ''}\n\nGenera SOLO el texto del post, listo para copiar y pegar.`,
-        en: `Generate a LinkedIn post about: "${topic}"${tone ? `\n\nTone: ${tone}` : ''}${audience ? `\n\nAudience: ${audience}` : ''}\n\nGenerate ONLY the post text, ready to copy and paste.`
+        es: `Genera un post de LinkedIn sobre: "${topic}"\n\nGenera SOLO el texto del post, listo para copiar y pegar.`,
+        en: `Generate a LinkedIn post about: "${topic}"\n\nGenerate ONLY the post text, ready to copy and paste.`
       };
 
       const response = await this.callAI({
-        systemPrompt: systemPrompts[language],
+        systemPrompt,
         userPrompt: userPrompts[language],
         temperature: 0.8,
         maxTokens: 500
@@ -95,21 +136,82 @@ RULES:
   }
 
   /**
-   * Improve existing LinkedIn post
+   * Improve existing LinkedIn post with writing style
    */
-  async improvePost(originalPost: string, focusArea?: string): Promise<string> {
+  async improvePost(
+    originalPost: string,
+    language: 'es' | 'en' = 'es',
+    writingStyle?: WritingStyle
+  ): Promise<string> {
     try {
-      const response = await this.callAI({
-        systemPrompt: `Eres un experto en optimizar contenido de LinkedIn para máximo engagement.
+      // Style-specific instructions (same as generatePost)
+      const styleInstructions = {
+        professional: {
+          es: 'TONO PROFESIONAL: Formal, corporativo, estructurado. Lenguaje pulido con autoridad.',
+          en: 'PROFESSIONAL TONE: Formal, corporate, structured. Polished language with authority.'
+        },
+        technical: {
+          es: 'TONO TÉCNICO: Como Senior Engineer. Profundidad técnica, menciona tecnologías y best practices.',
+          en: 'TECHNICAL TONE: Like Senior Engineer. Technical depth, mention technologies and best practices.'
+        },
+        casual: {
+          es: 'TONO CASUAL: Conversacional, cercano, humano. EVITA sonar corporativo.',
+          en: 'CASUAL TONE: Conversational, friendly, human. AVOID sounding corporate.'
+        },
+        'recruiter-friendly': {
+          es: 'TONO RECRUITER-FRIENDLY: Resalta skills, logros, keywords que buscan reclutadores.',
+          en: 'RECRUITER-FRIENDLY TONE: Highlight skills, achievements, keywords recruiters search for.'
+        },
+        founder: {
+          es: 'TONO FOUNDER: Visionario, comparte insights de liderazgo y construcción.',
+          en: 'FOUNDER TONE: Visionary, share leadership and building insights.'
+        },
+        concise: {
+          es: 'TONO CONCISO: Breve, directo, sin rodeos. Máximo impacto mínimas palabras.',
+          en: 'CONCISE TONE: Brief, direct, no fluff. Maximum impact minimum words.'
+        },
+        storytelling: {
+          es: 'TONO STORYTELLING: Narrativo, emocional, cuenta una historia que conecta.',
+          en: 'STORYTELLING TONE: Narrative, emotional, tell a story that connects.'
+        }
+      };
+
+      const baseSystemPrompts = {
+        es: `Eres un experto en optimizar contenido de LinkedIn para máximo engagement.
 
 TAREAS:
 - Mejorar el hook para capturar más atención
 - Optimizar estructura y legibilidad
 - Añadir emojis estratégicos (si faltan)
-- Mejorar claridad y profesionalismo
+- Mejorar claridad
 - Sugerir hashtags relevantes (si faltan)
-- Mantener la esencia del mensaje original`,
-        userPrompt: `Mejora este post de LinkedIn:\n\n"${originalPost}"${focusArea ? `\n\nEnfócate en: ${focusArea}` : ''}\n\nDevuelve el post mejorado.`,
+- Mantener la esencia del mensaje original
+- ESCRIBE TODO EN ESPAÑOL`,
+        en: `You are an expert at optimizing LinkedIn content for maximum engagement.
+
+TASKS:
+- Improve the hook to capture more attention
+- Optimize structure and readability
+- Add strategic emojis (if missing)
+- Improve clarity
+- Suggest relevant hashtags (if missing)
+- Maintain the essence of the original message
+- WRITE EVERYTHING IN ENGLISH`
+      };
+
+      let systemPrompt = baseSystemPrompts[language];
+      if (writingStyle && styleInstructions[writingStyle]) {
+        systemPrompt += '\n\n' + styleInstructions[writingStyle][language];
+      }
+
+      const userPrompts = {
+        es: `Mejora este post de LinkedIn:\n\n"${originalPost}"\n\nDevuelve el post mejorado EN ESPAÑOL.`,
+        en: `Improve this LinkedIn post:\n\n"${originalPost}"\n\nReturn the improved post IN ENGLISH.`
+      };
+
+      const response = await this.callAI({
+        systemPrompt,
+        userPrompt: userPrompts[language],
         temperature: 0.7,
         maxTokens: 600
       });
