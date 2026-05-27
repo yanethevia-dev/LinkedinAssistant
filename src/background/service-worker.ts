@@ -116,24 +116,29 @@ async function handleGenerateContent(
     // Get settings to determine provider and API key
     const settings = await storageService.getSettings();
 
-    const selectedProvider = settings.selectedProvider;
-    if (!selectedProvider) {
+    if (!settings) {
+      throw new Error('Could not load settings');
+    }
+
+    const provider = settings.defaultProvider;
+    if (!provider) {
       throw new Error('No AI provider configured. Please configure in settings.');
     }
 
-    const apiKeys = settings.apiKeys || {};
-    const apiKey = apiKeys[selectedProvider];
+    const apiKey = settings.apiKeys[provider];
     if (!apiKey) {
-      throw new Error(`No API key for ${selectedProvider}. Please add in settings.`);
+      throw new Error(`No API key for ${provider}. Please add in settings.`);
     }
 
-    const models = settings.models || {};
-    const model = models[selectedProvider] || 'default';
+    const model = settings.models[provider];
+    if (!model) {
+      throw new Error(`No model configured for ${provider}`);
+    }
 
     // Build AI request with provider and model from settings
     const aiRequest = {
-      provider: selectedProvider,
-      model: model,
+      provider,
+      model,
       systemPrompt: payload.systemPrompt,
       userPrompt: payload.userPrompt,
       temperature: payload.temperature ?? 0.7,

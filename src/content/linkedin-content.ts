@@ -271,8 +271,8 @@ function handleGenerateCV() {
 
   console.log('[Content Script] Extracting profile data...');
 
-  // TODO: Extract profile data
-  const profileData = extractProfileData();
+  // Extract profile data with details
+  const profileData = extractProfileData(true); // true = detailed extraction
 
   if (!profileData.name) {
     alert('No se pudo extraer la información del perfil.\n\nAsegúrate de estar en tu página de perfil.');
@@ -282,19 +282,57 @@ function handleGenerateCV() {
   // Show confirmation and generate CV
   modal.open({
     title: '📄 Generar mi CV',
-    description: `He extraído tu perfil:\n\n• Nombre: ${profileData.name}\n• Título: ${profileData.headline}\n• Experiencias: ${profileData.experienceCount}\n\n¿Generar CV profesional?`,
+    description: `He extraído tu perfil:\n\n• Nombre: ${profileData.name}\n• Título: ${profileData.headline}\n• Experiencias: ${profileData.experienceCount}\n• Educación: ${profileData.educationCount}\n\n¿Generar CV profesional con IA?`,
     placeholder: 'Agrega notas adicionales (opcional)...',
     primaryButton: 'Generar CV',
     secondaryButton: 'Cancelar',
     maxLength: 500,
     showCharCount: false,
     onPrimary: async (notes: string) => {
-      console.log('[Content Script] Generating CV with notes:', notes);
+      console.log('[Content Script] Generating CV...');
 
-      // TODO: Call AI service to generate CV
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      try {
+        modal.close();
 
-      alert('🎉 CV Generado!\n\n(Aquí se descargaría el CV en PDF)\n\n(Funcionalidad de generación próximamente)');
+        // Show loading toast
+        showSuccessToast('⏳ Generando CV con IA...');
+
+        // Call AI service to generate CV
+        const cvText = await aiHelper.generateCV(profileData);
+        console.log('[Content Script] CV generated successfully');
+
+        // Show CV in a new modal
+        modal.open({
+          title: '📄 Tu CV Generado',
+          description: 'CV generado con IA. Copia el texto o descarga como archivo:',
+          placeholder: '',
+          initialValue: cvText,
+          primaryButton: 'Copiar al Portapapeles',
+          secondaryButton: 'Cerrar',
+          maxLength: 5000,
+          showCharCount: false,
+          onPrimary: async (text: string) => {
+            // Copy to clipboard
+            try {
+              await navigator.clipboard.writeText(text);
+              showSuccessToast('✅ CV copiado al portapapeles');
+            } catch (error) {
+              alert('No se pudo copiar automáticamente. Por favor, selecciona y copia manualmente.');
+            }
+          },
+          onSecondary: () => {
+            console.log('[Content Script] CV modal closed');
+          },
+          onClose: () => {
+            console.log('[Content Script] CV modal closed');
+          }
+        });
+
+        showSuccessToast('✅ CV generado con IA');
+      } catch (error: any) {
+        console.error('[Content Script] Error generating CV:', error);
+        alert(`❌ Error al generar CV:\n\n${error.message}\n\nVerifica tu configuración de IA en Settings.`);
+      }
     },
     onSecondary: () => {
       console.log('[Content Script] CV generation cancelled');
@@ -340,30 +378,73 @@ function handleImproveProfile() {
 
   console.log('[Content Script] Starting profile improvement...');
 
-  // TODO: Call AI service to improve each section
-  // TODO: Automatically edit and save each section
+  // Show loading toast
+  showSuccessToast('⏳ Analizando perfil con IA...');
 
-  alert('⚙️ Mejorando perfil...\n\n(La IA está analizando y mejorando cada sección)\n\n(Funcionalidad de auto-edición próximamente)\n\nPor ahora, te mostraré las sugerencias para que las copies manualmente.');
+  // Call AI service to analyze and improve profile
+  (async () => {
+    try {
+      // Generate analysis and suggestions
+      const analysis = await aiHelper.analyzeProfile(profileData);
+      console.log('[Content Script] Profile analysis complete');
 
-  // For now, just show improvements in modal
-  setTimeout(() => {
-    modal.open({
-      title: '✨ Sugerencias de Mejora',
-      description: 'Aquí están las mejoras sugeridas por la IA:\n\n(Cópialas manualmente a tu perfil por ahora)',
-      placeholder: '[Sugerencias de mejora generadas por IA]',
-      initialValue: `Ejemplo de mejora para "Acerca de":\n\n${profileData.about || 'Tu descripción actual'}\n\n→ Versión mejorada:\n\n[Aquí iría la versión mejorada por IA con mejor storytelling, keywords, etc.]`,
-      primaryButton: 'Entendido',
-      secondaryButton: undefined,
-      maxLength: 3000,
-      showCharCount: false,
-      onPrimary: async () => {
-        console.log('[Content Script] User acknowledged improvements');
-      },
-      onClose: () => {
-        console.log('[Content Script] Modal closed');
+      // If there's an About section, improve it
+      let improvedAbout = '';
+      if (profileData.about) {
+        showSuccessToast('⏳ Mejorando sección "Acerca de"...');
+        improvedAbout = await aiHelper.improveAbout(profileData.about, profileData.headline);
+        console.log('[Content Script] About section improved');
       }
-    });
-  }, 2000);
+
+      // Show results in modal
+      let resultsText = '📊 ANÁLISIS DE PERFIL\n\n';
+      resultsText += analysis;
+      resultsText += '\n\n━━━━━━━━━━━━━━━━━━━━\n\n';
+
+      if (improvedAbout) {
+        resultsText += '✨ SECCIÓN "ACERCA DE" MEJORADA\n\n';
+        resultsText += improvedAbout;
+        resultsText += '\n\n━━━━━━━━━━━━━━━━━━━━\n\n';
+        resultsText += '💡 CÓMO APLICAR:\n';
+        resultsText += '1. Ve a tu sección "Acerca de"\n';
+        resultsText += '2. Click en el ícono de editar (✏️)\n';
+        resultsText += '3. Copia y pega el texto mejorado\n';
+        resultsText += '4. Guarda los cambios\n\n';
+        resultsText += '⚠️ La edición automática estará disponible próximamente.';
+      }
+
+      modal.open({
+        title: '✨ Tu Perfil Mejorado con IA',
+        description: 'Análisis completo y secciones mejoradas. Copia y aplica las sugerencias manualmente:',
+        placeholder: '',
+        initialValue: resultsText,
+        primaryButton: 'Copiar Todo',
+        secondaryButton: 'Cerrar',
+        maxLength: 5000,
+        showCharCount: false,
+        onPrimary: async (text: string) => {
+          // Copy to clipboard
+          try {
+            await navigator.clipboard.writeText(text);
+            showSuccessToast('✅ Sugerencias copiadas al portapapeles');
+          } catch (error) {
+            alert('No se pudo copiar automáticamente. Por favor, selecciona y copia manualmente.');
+          }
+        },
+        onSecondary: () => {
+          console.log('[Content Script] Profile improvements modal closed');
+        },
+        onClose: () => {
+          console.log('[Content Script] Modal closed');
+        }
+      });
+
+      showSuccessToast('✅ Análisis de perfil completado');
+    } catch (error: any) {
+      console.error('[Content Script] Error improving profile:', error);
+      alert(`❌ Error al mejorar perfil:\n\n${error.message}\n\nVerifica tu configuración de IA en Settings.`);
+    }
+  })();
 }
 
 // Handle Improve Post button click
