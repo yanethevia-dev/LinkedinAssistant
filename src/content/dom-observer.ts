@@ -175,6 +175,16 @@ export class LinkedInDOMObserver {
         if (this.observedElements.has(element)) return;
         if (!this.isVisible(element)) return;
 
+        // Skip utility elements (clipboard, hidden helpers)
+        if (element.classList.contains('ql-clipboard')) {
+          console.log('[DOMObserver]   ✗ Skipping ql-clipboard (internal Quill element)');
+          return;
+        }
+        if (element.getAttribute('tabindex') === '-1') {
+          console.log('[DOMObserver]   ✗ Skipping tabindex=-1 (hidden utility element)');
+          return;
+        }
+
         console.log('[DOMObserver]   ✓ Visible editor in Shadow DOM:', element.className.substring(0, 50));
         foundElements.add(element);
       });
@@ -205,6 +215,16 @@ export class LinkedInDOMObserver {
 
         if (this.observedElements.has(element)) return;
         if (!this.isVisible(element)) return;
+
+        // Skip utility elements (clipboard, hidden helpers)
+        if (element.classList.contains('ql-clipboard')) {
+          console.log('[DOMObserver]   ✗ Skipping ql-clipboard');
+          return;
+        }
+        if (element.getAttribute('tabindex') === '-1') {
+          console.log('[DOMObserver]   ✗ Skipping tabindex=-1');
+          return;
+        }
 
         console.log('[DOMObserver]   ✓ Visible editor:', element.className.substring(0, 50));
         foundElements.add(element);
