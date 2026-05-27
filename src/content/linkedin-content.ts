@@ -6,6 +6,7 @@ import { uiInjector } from './ui-injector';
 import { modal } from './modal';
 import { aiHelper } from './ai-helper';
 import { downloadAsTxt, downloadAsWord, downloadAsPDF } from './cv-exporter';
+import { showLanguageSelector } from './language-selector';
 
 console.log('[LinkedIn Assistant] Content script loaded');
 console.log('[LinkedIn Assistant] URL:', window.location.href);
@@ -205,56 +206,65 @@ function initializeDOMObserver() {
 function handleGeneratePostWithAI() {
   console.log('[Content Script] Generate Post with AI clicked');
 
-  // Open modal to get the topic/idea
-  modal.open({
-    title: '✨ Generar Post con IA',
-    description: '¿Sobre qué quieres escribir? Describe tu idea o tema y generaré un post completo para LinkedIn.',
-    placeholder: 'Ejemplo: "Anunciar el lanzamiento de nuestro nuevo producto" o "Compartir aprendizajes sobre trabajo remoto"...',
-    primaryButton: 'Generar Post',
-    secondaryButton: 'Cancelar',
-    maxLength: 500,
-    showCharCount: true,
-    onPrimary: async (topic: string) => {
-      console.log('[Content Script] Generating post for topic:', topic);
+  // First, show language selector
+  showLanguageSelector('post', (language) => {
+    console.log('[Content Script] Language selected:', language);
 
-      try {
-        modal.close();
+    // Open modal to get the topic/idea
+    modal.open({
+      title: language === 'es' ? '✨ Generar Post con IA' : '✨ Generate Post with AI',
+      description: language === 'es'
+        ? '¿Sobre qué quieres escribir? Describe tu idea o tema y generaré un post completo para LinkedIn.'
+        : 'What do you want to write about? Describe your idea or topic and I\'ll generate a complete LinkedIn post.',
+      placeholder: language === 'es'
+        ? 'Ejemplo: "Anunciar el lanzamiento de nuestro nuevo producto" o "Compartir aprendizajes sobre trabajo remoto"...'
+        : 'Example: "Announce our new product launch" or "Share insights about remote work"...',
+      primaryButton: language === 'es' ? 'Generar Post' : 'Generate Post',
+      secondaryButton: language === 'es' ? 'Cancelar' : 'Cancel',
+      maxLength: 500,
+      showCharCount: true,
+      onPrimary: async (topic: string) => {
+        console.log('[Content Script] Generating post for topic:', topic);
 
-        // Show loading toast
-        showSuccessToast('⏳ Generando post con IA...');
+        try {
+          modal.close();
 
-        // Call AI service to generate post
-        const generatedPost = await aiHelper.generatePost(topic);
-        console.log('[Content Script] Post generated successfully');
+          // Show loading toast
+          showSuccessToast(language === 'es' ? '⏳ Generando post con IA...' : '⏳ Generating post with AI...');
 
-        // Open LinkedIn composer
-        const startPostBtn = document.querySelector('[aria-label*="Start a post"], [aria-label*="Crear publicación"]') as HTMLElement;
+          // Call AI service to generate post with selected language
+          const generatedPost = await aiHelper.generatePost(topic, language);
+          console.log('[Content Script] Post generated successfully');
 
-        if (startPostBtn) {
-          startPostBtn.click();
-          console.log('[Content Script] LinkedIn composer opened');
+          // Open LinkedIn composer
+          const startPostBtn = document.querySelector('[aria-label*="Start a post"], [aria-label*="Crear publicación"]') as HTMLElement;
 
-          // Wait for composer to open and insert text
-          setTimeout(() => {
-            const success = insertTextIntoComposer(generatedPost);
-            if (!success) {
-              alert(`✅ Post generado:\n\n${generatedPost}\n\n❌ No se pudo insertar automáticamente. Cópialo manualmente.`);
-            }
-          }, 1000);
-        } else {
-          alert(`✅ Post generado:\n\n${generatedPost}\n\n(Copia manualmente al compositor de LinkedIn)`);
+          if (startPostBtn) {
+            startPostBtn.click();
+            console.log('[Content Script] LinkedIn composer opened');
+
+            // Wait for composer to open and insert text
+            setTimeout(() => {
+              const success = insertTextIntoComposer(generatedPost);
+              if (!success) {
+                alert(`✅ ${language === 'es' ? 'Post generado' : 'Post generated'}:\n\n${generatedPost}\n\n❌ ${language === 'es' ? 'No se pudo insertar automáticamente. Cópialo manualmente.' : 'Could not insert automatically. Copy manually.'}`);
+              }
+            }, 1000);
+          } else {
+            alert(`✅ ${language === 'es' ? 'Post generado' : 'Post generated'}:\n\n${generatedPost}\n\n${language === 'es' ? '(Copia manualmente al compositor de LinkedIn)' : '(Copy manually to LinkedIn composer)'}`);
+          }
+        } catch (error: any) {
+          console.error('[Content Script] Error generating post:', error);
+          alert(`❌ ${language === 'es' ? 'Error al generar post' : 'Error generating post'}:\n\n${error.message}\n\n${language === 'es' ? 'Verifica tu configuración de IA en Settings.' : 'Check your AI settings in Settings.'}`);
         }
-      } catch (error: any) {
-        console.error('[Content Script] Error generating post:', error);
-        alert(`❌ Error al generar post:\n\n${error.message}\n\nVerifica tu configuración de IA en Settings.`);
+      },
+      onSecondary: () => {
+        console.log('[Content Script] Generate cancelled');
+      },
+      onClose: () => {
+        console.log('[Content Script] Modal closed');
       }
-    },
-    onSecondary: () => {
-      console.log('[Content Script] Generate cancelled');
-    },
-    onClose: () => {
-      console.log('[Content Script] Modal closed');
-    }
+    });
   });
 }
 
@@ -308,8 +318,11 @@ async function handleGenerateCV() {
     }
   }
 
-  // Show CV generation modal with job posting option
-  showCVGenerationModal(profileData);
+  // Show language selector first, then CV generation modal
+  showLanguageSelector('cv', (language) => {
+    console.log('[Content Script] Language selected for CV:', language);
+    showCVGenerationModal(profileData, language);
+  });
 }
 
 // Handle Improve Profile (floating button)
@@ -357,73 +370,13 @@ async function handleImproveProfile() {
 
   console.log('[Content Script] Starting profile improvement...');
 
-  // Show loading toast
-  showSuccessToast('⏳ Analizando perfil con IA...');
+  // Show language selector first
+  showLanguageSelector('profile', (language) => {
+    console.log('[Content Script] Language selected for profile:', language);
 
-  // Call AI service to analyze and improve profile
-  (async () => {
-    try {
-      // Generate analysis and suggestions
-      const analysis = await aiHelper.analyzeProfile(profileData);
-      console.log('[Content Script] Profile analysis complete');
-
-      // If there's an About section, improve it
-      let improvedAbout = '';
-      if (profileData.about) {
-        showSuccessToast('⏳ Mejorando sección "Acerca de"...');
-        improvedAbout = await aiHelper.improveAbout(profileData.about, profileData.headline);
-        console.log('[Content Script] About section improved');
-      }
-
-      // Show results in modal
-      let resultsText = '📊 ANÁLISIS DE PERFIL\n\n';
-      resultsText += analysis;
-      resultsText += '\n\n━━━━━━━━━━━━━━━━━━━━\n\n';
-
-      if (improvedAbout) {
-        resultsText += '✨ SECCIÓN "ACERCA DE" MEJORADA\n\n';
-        resultsText += improvedAbout;
-        resultsText += '\n\n━━━━━━━━━━━━━━━━━━━━\n\n';
-        resultsText += '💡 CÓMO APLICAR:\n';
-        resultsText += '1. Ve a tu sección "Acerca de"\n';
-        resultsText += '2. Click en el ícono de editar (✏️)\n';
-        resultsText += '3. Copia y pega el texto mejorado\n';
-        resultsText += '4. Guarda los cambios\n\n';
-        resultsText += '⚠️ La edición automática estará disponible próximamente.';
-      }
-
-      modal.open({
-        title: '✨ Tu Perfil Mejorado con IA',
-        description: 'Análisis completo y secciones mejoradas. Copia y aplica las sugerencias manualmente:',
-        placeholder: '',
-        initialValue: resultsText,
-        primaryButton: 'Copiar Todo',
-        secondaryButton: 'Cerrar',
-        maxLength: 5000,
-        showCharCount: false,
-        onPrimary: async (text: string) => {
-          // Copy to clipboard
-          try {
-            await navigator.clipboard.writeText(text);
-            showSuccessToast('✅ Sugerencias copiadas al portapapeles');
-          } catch (error) {
-            alert('No se pudo copiar automáticamente. Por favor, selecciona y copia manualmente.');
-          }
-        },
-        onSecondary: () => {
-          console.log('[Content Script] Profile improvements modal closed');
-        },
-        onClose: () => {
-          console.log('[Content Script] Modal closed');
-        }
-      });
-
-      showSuccessToast('✅ Análisis de perfil completado');
-    } catch (error: any) {
-      console.error('[Content Script] Error improving profile:', error);
-      alert(`❌ Error al mejorar perfil:\n\n${error.message}\n\nVerifica tu configuración de IA en Settings.`);
-    }
-  })();
+    // Show profile sections selection modal
+    showProfileSectionsModal(profileData, language);
+  });
 }
 
 // Handle Improve Post button click
@@ -902,7 +855,7 @@ function extractProfileData(detailed = false) {
 }
 
 // Helper: Show CV generation modal with job posting option
-function showCVGenerationModal(profileData: any) {
+function showCVGenerationModal(profileData: any, language: 'es' | 'en') {
   const overlay = document.createElement('div');
   overlay.style.cssText = `
     position: fixed;
@@ -1161,18 +1114,18 @@ function showCVGenerationModal(profileData: any) {
 
       if (cvType === 'cvTargeted' && jobPosting.trim()) {
         // Generate targeted CV
-        cvText = await aiHelper.generateTargetedCV(profileData, jobPosting);
+        cvText = await aiHelper.generateTargetedCV(profileData, jobPosting, language);
       } else {
         // Generate optimized general CV
-        cvText = await aiHelper.generateOptimizedCV(profileData);
+        cvText = await aiHelper.generateOptimizedCV(profileData, language);
       }
 
       console.log('[Content Script] CV generated successfully');
       showCVWithDownloadOptions(cvText, profileData.name);
-      showSuccessToast('✅ CV generado con IA');
+      showSuccessToast(language === 'es' ? '✅ CV generado con IA' : '✅ CV generated with AI');
     } catch (error: any) {
       console.error('[Content Script] Error generating CV:', error);
-      alert(`❌ Error al generar CV:\n\n${error.message}\n\nVerifica tu configuración de IA en Settings.`);
+      alert(`❌ ${language === 'es' ? 'Error al generar CV' : 'Error generating CV'}:\n\n${error.message}\n\n${language === 'es' ? 'Verifica tu configuración de IA en Settings.' : 'Check your AI settings in Settings.'}`);
     }
   };
 
@@ -1409,6 +1362,555 @@ function showCVWithDownloadOptions(cvText: string, userName: string) {
     }
   `;
   document.head.appendChild(style);
+
+  document.body.appendChild(overlay);
+}
+
+// Show Profile Sections Selection Modal
+function showProfileSectionsModal(profileData: any, language: 'es' | 'en') {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    animation: fadeIn 0.2s ease;
+  `;
+
+  const modalContainer = document.createElement('div');
+  modalContainer.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  `;
+
+  // Header
+  const header = document.createElement('div');
+  header.style.cssText = `
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid #e0e0e0;
+  `;
+  header.innerHTML = `
+    <h2 style="margin: 0; font-size: 24px; font-weight: 600; color: #333;">
+      ${language === 'es' ? '🔧 Mejorar mi Perfil con IA' : '🔧 Improve My Profile with AI'}
+    </h2>
+    <p style="margin: 8px 0 0; color: #666; font-size: 14px;">
+      ${language === 'es'
+        ? 'Selecciona las secciones que quieres mejorar'
+        : 'Select the sections you want to improve'}
+    </p>
+  `;
+
+  // Content
+  const content = document.createElement('div');
+  content.style.cssText = `
+    padding: 24px;
+  `;
+
+  // Profile summary
+  const summary = document.createElement('div');
+  summary.style.cssText = `
+    background: #f0f7ff;
+    border: 1px solid #c5e1ff;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+  `;
+  summary.innerHTML = `
+    <h3 style="margin: 0 0 12px; font-size: 16px; font-weight: 600; color: #0a66c2;">
+      ${language === 'es' ? '📋 Datos Actuales' : '📋 Current Data'}
+    </h3>
+    <ul style="margin: 0; padding-left: 20px; color: #333; font-size: 14px; line-height: 1.8;">
+      <li><strong>${language === 'es' ? 'Nombre' : 'Name'}:</strong> ${profileData.name}</li>
+      <li><strong>${language === 'es' ? 'Título' : 'Headline'}:</strong> ${profileData.headline || (language === 'es' ? 'No disponible' : 'Not available')}</li>
+      ${profileData.about ? `<li><strong>${language === 'es' ? 'Acerca de' : 'About'}:</strong> ${profileData.about.substring(0, 100)}...</li>` : ''}
+    </ul>
+  `;
+  content.appendChild(summary);
+
+  // Checkboxes for sections
+  const sectionsContainer = document.createElement('div');
+  sectionsContainer.style.cssText = `
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+  `;
+
+  const createCheckbox = (id: string, label: string, enabled: boolean = true) => {
+    const container = document.createElement('label');
+    container.style.cssText = `
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      cursor: ${enabled ? 'pointer' : 'not-allowed'};
+      transition: all 0.2s;
+      background: ${enabled ? 'white' : '#f5f5f5'};
+      opacity: ${enabled ? '1' : '0.6'};
+    `;
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = id;
+    checkbox.checked = enabled;
+    checkbox.disabled = !enabled;
+    checkbox.style.cssText = `
+      width: 18px;
+      height: 18px;
+      margin-right: 12px;
+      cursor: ${enabled ? 'pointer' : 'not-allowed'};
+    `;
+
+    if (enabled) {
+      checkbox.onchange = () => {
+        if (checkbox.checked) {
+          container.style.border = '2px solid #0a66c2';
+          container.style.background = '#f0f7ff';
+        } else {
+          container.style.border = '2px solid #e0e0e0';
+          container.style.background = 'white';
+        }
+      };
+
+      container.onmouseenter = () => {
+        if (!checkbox.checked) {
+          container.style.border = '2px solid #0a66c2';
+        }
+      };
+      container.onmouseleave = () => {
+        if (!checkbox.checked) {
+          container.style.border = '2px solid #e0e0e0';
+        }
+      };
+    }
+
+    const labelText = document.createElement('span');
+    labelText.style.cssText = `
+      font-size: 15px;
+      font-weight: 500;
+      color: ${enabled ? '#333' : '#999'};
+    `;
+    labelText.textContent = label;
+
+    container.appendChild(checkbox);
+    container.appendChild(labelText);
+    return container;
+  };
+
+  const analysisCheckbox = createCheckbox(
+    'improveAnalysis',
+    language === 'es' ? '📊 Análisis de Perfil (siempre incluido)' : '📊 Profile Analysis (always included)'
+  );
+  analysisCheckbox.querySelector('input')!.disabled = true;
+  analysisCheckbox.querySelector('input')!.checked = true;
+  sectionsContainer.appendChild(analysisCheckbox);
+
+  if (profileData.headline) {
+    const headlineCheckbox = createCheckbox(
+      'improveHeadline',
+      language === 'es' ? '✨ Mejorar Titular / Headline' : '✨ Improve Headline'
+    );
+    sectionsContainer.appendChild(headlineCheckbox);
+  }
+
+  if (profileData.about) {
+    const aboutCheckbox = createCheckbox(
+      'improveAbout',
+      language === 'es' ? '✨ Mejorar Sección "Acerca de" / About' : '✨ Improve "About" Section'
+    );
+    sectionsContainer.appendChild(aboutCheckbox);
+  }
+
+  content.appendChild(sectionsContainer);
+  modalContainer.appendChild(header);
+  modalContainer.appendChild(content);
+
+  // Footer
+  const footer = document.createElement('div');
+  footer.style.cssText = `
+    padding: 16px 24px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    gap: 12px;
+  `;
+
+  const generateBtn = document.createElement('button');
+  generateBtn.textContent = language === 'es' ? '✨ Mejorar con IA' : '✨ Improve with AI';
+  generateBtn.style.cssText = `
+    flex: 1;
+    padding: 14px 24px;
+    background: #0a66c2;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  `;
+  generateBtn.onmouseenter = () => generateBtn.style.background = '#004182';
+  generateBtn.onmouseleave = () => generateBtn.style.background = '#0a66c2';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = language === 'es' ? 'Cancelar' : 'Cancel';
+  cancelBtn.style.cssText = `
+    padding: 14px 24px;
+    background: #f0f0f0;
+    color: #333;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  `;
+  cancelBtn.onmouseenter = () => cancelBtn.style.background = '#e0e0e0';
+  cancelBtn.onmouseleave = () => cancelBtn.style.background = '#f0f0f0';
+
+  generateBtn.onclick = async () => {
+    const improveHeadline = (document.getElementById('improveHeadline') as HTMLInputElement)?.checked || false;
+    const improveAbout = (document.getElementById('improveAbout') as HTMLInputElement)?.checked || false;
+
+    // Close modal
+    overlay.remove();
+
+    // Show loading toast
+    showSuccessToast(language === 'es' ? '⏳ Analizando perfil con IA...' : '⏳ Analyzing profile with AI...');
+
+    try {
+      // Always generate analysis
+      const analysis = await aiHelper.analyzeProfile(profileData, language);
+      console.log('[Content Script] Profile analysis complete');
+
+      // Generate improved sections
+      let improvedHeadline = '';
+      let improvedAboutText = '';
+
+      if (improveHeadline && profileData.headline) {
+        showSuccessToast(language === 'es' ? '⏳ Mejorando titular...' : '⏳ Improving headline...');
+        improvedHeadline = await aiHelper.improveHeadline(profileData.headline, language);
+        console.log('[Content Script] Headline improved');
+      }
+
+      if (improveAbout && profileData.about) {
+        showSuccessToast(language === 'es' ? '⏳ Mejorando sección "Acerca de"...' : '⏳ Improving "About" section...');
+        improvedAboutText = await aiHelper.improveAbout(profileData.about, language, profileData.headline);
+        console.log('[Content Script] About section improved');
+      }
+
+      // Show results in new modal with sections
+      showProfileImprovementResults({
+        analysis,
+        improvedHeadline,
+        improvedAbout: improvedAboutText,
+        language
+      });
+
+      showSuccessToast(language === 'es' ? '✅ Análisis completado' : '✅ Analysis complete');
+    } catch (error: any) {
+      console.error('[Content Script] Error improving profile:', error);
+      alert(`❌ ${language === 'es' ? 'Error al mejorar perfil' : 'Error improving profile'}:\n\n${error.message}\n\n${language === 'es' ? 'Verifica tu configuración de IA en Settings.' : 'Check your AI settings in Settings.'}`);
+    }
+  };
+
+  cancelBtn.onclick = () => {
+    overlay.remove();
+  };
+
+  footer.appendChild(generateBtn);
+  footer.appendChild(cancelBtn);
+  modalContainer.appendChild(footer);
+  overlay.appendChild(modalContainer);
+
+  // Close on overlay click
+  overlay.onclick = (e) => {
+    if (e.target === overlay) {
+      cancelBtn.click();
+    }
+  };
+
+  // Close on Escape
+  const handleEscape = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      cancelBtn.click();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+
+  document.body.appendChild(overlay);
+}
+
+// Show Profile Improvement Results with Sections
+function showProfileImprovementResults(data: {
+  analysis: string;
+  improvedHeadline?: string;
+  improvedAbout?: string;
+  language: 'es' | 'en';
+}) {
+  const { analysis, improvedHeadline, improvedAbout, language } = data;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    animation: fadeIn 0.2s ease;
+  `;
+
+  const modalContainer = document.createElement('div');
+  modalContainer.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  `;
+
+  // Header
+  const header = document.createElement('div');
+  header.style.cssText = `
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid #e0e0e0;
+  `;
+  header.innerHTML = `
+    <h2 style="margin: 0; font-size: 24px; font-weight: 600; color: #333;">
+      ${language === 'es' ? '✨ Tu Perfil Mejorado con IA' : '✨ Your AI-Improved Profile'}
+    </h2>
+    <p style="margin: 8px 0 0; color: #666; font-size: 14px;">
+      ${language === 'es'
+        ? 'Copia las secciones mejoradas y aplícalas manualmente a tu perfil'
+        : 'Copy the improved sections and apply them manually to your profile'}
+    </p>
+  `;
+
+  // Content
+  const content = document.createElement('div');
+  content.style.cssText = `
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+  `;
+
+  // Analysis section
+  const analysisSection = document.createElement('div');
+  analysisSection.style.cssText = `
+    margin-bottom: 24px;
+    padding: 16px;
+    background: #f0f7ff;
+    border: 1px solid #c5e1ff;
+    border-radius: 8px;
+  `;
+  analysisSection.innerHTML = `
+    <h3 style="margin: 0 0 12px; font-size: 18px; font-weight: 600; color: #0a66c2;">
+      📊 ${language === 'es' ? 'Análisis de Perfil' : 'Profile Analysis'}
+    </h3>
+    <div style="color: #333; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${analysis}</div>
+  `;
+  content.appendChild(analysisSection);
+
+  // Helper function to create section with copy button
+  const createSection = (title: string, text: string, sectionId: string) => {
+    const section = document.createElement('div');
+    section.style.cssText = `
+      margin-bottom: 20px;
+      padding: 16px;
+      background: white;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+    `;
+
+    const sectionHeader = document.createElement('div');
+    sectionHeader.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    `;
+
+    const sectionTitle = document.createElement('h3');
+    sectionTitle.style.cssText = `
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+    `;
+    sectionTitle.textContent = title;
+
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = language === 'es' ? '📋 Copiar' : '📋 Copy';
+    copyBtn.style.cssText = `
+      padding: 8px 16px;
+      background: #0a66c2;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    `;
+    copyBtn.onmouseenter = () => copyBtn.style.background = '#004182';
+    copyBtn.onmouseleave = () => copyBtn.style.background = '#0a66c2';
+    copyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+        copyBtn.textContent = language === 'es' ? '✅ Copiado' : '✅ Copied';
+        setTimeout(() => {
+          copyBtn.textContent = language === 'es' ? '📋 Copiar' : '📋 Copy';
+        }, 2000);
+      } catch (error) {
+        alert(language === 'es'
+          ? 'No se pudo copiar. Selecciona el texto manualmente.'
+          : 'Could not copy. Select the text manually.');
+      }
+    };
+
+    sectionHeader.appendChild(sectionTitle);
+    sectionHeader.appendChild(copyBtn);
+
+    const sectionContent = document.createElement('div');
+    sectionContent.style.cssText = `
+      color: #333;
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      padding: 12px;
+      background: #fafafa;
+      border-radius: 6px;
+    `;
+    sectionContent.textContent = text;
+
+    section.appendChild(sectionHeader);
+    section.appendChild(sectionContent);
+    return section;
+  };
+
+  // Add improved sections if available
+  if (improvedHeadline) {
+    const headlineSection = createSection(
+      language === 'es' ? '✨ Titular Mejorado' : '✨ Improved Headline',
+      improvedHeadline,
+      'headline'
+    );
+    content.appendChild(headlineSection);
+  }
+
+  if (improvedAbout) {
+    const aboutSection = createSection(
+      language === 'es' ? '✨ Sección "Acerca de" Mejorada' : '✨ Improved "About" Section',
+      improvedAbout,
+      'about'
+    );
+    content.appendChild(aboutSection);
+  }
+
+  modalContainer.appendChild(header);
+  modalContainer.appendChild(content);
+
+  // Footer
+  const footer = document.createElement('div');
+  footer.style.cssText = `
+    padding: 16px 24px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    gap: 12px;
+  `;
+
+  const copyAllBtn = document.createElement('button');
+  copyAllBtn.textContent = language === 'es' ? '📋 Copiar Todo' : '📋 Copy All';
+  copyAllBtn.style.cssText = `
+    flex: 1;
+    padding: 14px 24px;
+    background: #0a66c2;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  `;
+  copyAllBtn.onmouseenter = () => copyAllBtn.style.background = '#004182';
+  copyAllBtn.onmouseleave = () => copyAllBtn.style.background = '#0a66c2';
+  copyAllBtn.onclick = async () => {
+    let allText = `${language === 'es' ? '📊 ANÁLISIS DE PERFIL' : '📊 PROFILE ANALYSIS'}\n\n${analysis}\n\n`;
+    if (improvedHeadline) {
+      allText += `━━━━━━━━━━━━━━━━━━━━\n\n${language === 'es' ? '✨ TITULAR MEJORADO' : '✨ IMPROVED HEADLINE'}\n\n${improvedHeadline}\n\n`;
+    }
+    if (improvedAbout) {
+      allText += `━━━━━━━━━━━━━━━━━━━━\n\n${language === 'es' ? '✨ SECCIÓN "ACERCA DE" MEJORADA' : '✨ IMPROVED "ABOUT" SECTION'}\n\n${improvedAbout}\n\n`;
+    }
+
+    try {
+      await navigator.clipboard.writeText(allText);
+      showSuccessToast(language === 'es' ? '✅ Todo copiado' : '✅ All copied');
+    } catch (error) {
+      alert(language === 'es'
+        ? 'No se pudo copiar. Usa los botones individuales.'
+        : 'Could not copy. Use individual copy buttons.');
+    }
+  };
+
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = language === 'es' ? 'Cerrar' : 'Close';
+  closeBtn.style.cssText = `
+    padding: 14px 24px;
+    background: #f0f0f0;
+    color: #333;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  `;
+  closeBtn.onmouseenter = () => closeBtn.style.background = '#e0e0e0';
+  closeBtn.onmouseleave = () => closeBtn.style.background = '#f0f0f0';
+  closeBtn.onclick = () => overlay.remove();
+
+  footer.appendChild(copyAllBtn);
+  footer.appendChild(closeBtn);
+  modalContainer.appendChild(footer);
+  overlay.appendChild(modalContainer);
+
+  // Close on overlay click
+  overlay.onclick = (e) => {
+    if (e.target === overlay) {
+      closeBtn.click();
+    }
+  };
+
+  // Close on Escape
+  const handleEscape = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      closeBtn.click();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
 
   document.body.appendChild(overlay);
 }
