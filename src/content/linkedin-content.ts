@@ -56,67 +56,32 @@ function createFloatingButtons() {
     animation: slideInFromRight 0.3s ease;
   `;
 
-  // Button 1: Create Post
-  const createPostBtn = document.createElement('button');
-  createPostBtn.id = 'lia-btn-create-post';
-  createPostBtn.innerHTML = '✨ Crear Post';
-  createPostBtn.style.cssText = `
-    padding: 14px 24px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    border-radius: 25px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    transition: all 0.3s ease;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    white-space: nowrap;
-  `;
-
-  createPostBtn.addEventListener('mouseenter', () => {
-    createPostBtn.style.transform = 'translateY(-3px)';
-    createPostBtn.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.5)';
+  // Button 1: Generate Post with AI
+  const generatePostBtn = createFloatingButton({
+    id: 'lia-btn-generate-post',
+    text: '✨ Generar Post con IA',
+    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    shadowColor: 'rgba(102, 126, 234, 0.4)',
+    onClick: handleGeneratePostWithAI
   });
 
-  createPostBtn.addEventListener('mouseleave', () => {
-    createPostBtn.style.transform = 'translateY(0)';
-    createPostBtn.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+  // Button 2: Generate CV
+  const generateCVBtn = createFloatingButton({
+    id: 'lia-btn-generate-cv',
+    text: '📄 Generar mi CV',
+    gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    shadowColor: 'rgba(67, 233, 123, 0.4)',
+    onClick: handleGenerateCV
   });
 
-  createPostBtn.addEventListener('click', handleCreatePostClick);
-
-  // Button 2: Review Profile
-  const reviewProfileBtn = document.createElement('button');
-  reviewProfileBtn.id = 'lia-btn-review-profile';
-  reviewProfileBtn.innerHTML = '👤 Revisar Perfil';
-  reviewProfileBtn.style.cssText = `
-    padding: 14px 24px;
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    color: white;
-    border: none;
-    border-radius: 25px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
-    transition: all 0.3s ease;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    white-space: nowrap;
-  `;
-
-  reviewProfileBtn.addEventListener('mouseenter', () => {
-    reviewProfileBtn.style.transform = 'translateY(-3px)';
-    reviewProfileBtn.style.boxShadow = '0 6px 20px rgba(245, 87, 108, 0.5)';
+  // Button 3: Improve Profile
+  const improveProfileBtn = createFloatingButton({
+    id: 'lia-btn-improve-profile',
+    text: '🔧 Mejorar mi Perfil',
+    gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    shadowColor: 'rgba(245, 87, 108, 0.4)',
+    onClick: handleImproveProfile
   });
-
-  reviewProfileBtn.addEventListener('mouseleave', () => {
-    reviewProfileBtn.style.transform = 'translateY(0)';
-    reviewProfileBtn.style.boxShadow = '0 4px 15px rgba(245, 87, 108, 0.4)';
-  });
-
-  reviewProfileBtn.addEventListener('click', handleReviewProfileClick);
 
   // Add animation
   const style = document.createElement('style');
@@ -134,11 +99,53 @@ function createFloatingButtons() {
   `;
   document.head.appendChild(style);
 
-  container.appendChild(createPostBtn);
-  container.appendChild(reviewProfileBtn);
+  container.appendChild(generatePostBtn);
+  container.appendChild(generateCVBtn);
+  container.appendChild(improveProfileBtn);
   document.body.appendChild(container);
 
-  console.log('[LinkedIn Assistant] Floating buttons created');
+  console.log('[LinkedIn Assistant] 3 floating buttons created');
+}
+
+// Helper to create a floating button
+function createFloatingButton(config: {
+  id: string;
+  text: string;
+  gradient: string;
+  shadowColor: string;
+  onClick: () => void;
+}): HTMLButtonElement {
+  const btn = document.createElement('button');
+  btn.id = config.id;
+  btn.innerHTML = config.text;
+  btn.style.cssText = `
+    padding: 14px 24px;
+    background: ${config.gradient};
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 15px ${config.shadowColor};
+    transition: all 0.3s ease;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    white-space: nowrap;
+  `;
+
+  btn.addEventListener('mouseenter', () => {
+    btn.style.transform = 'translateY(-3px)';
+    btn.style.boxShadow = `0 6px 20px ${config.shadowColor.replace('0.4', '0.6')}`;
+  });
+
+  btn.addEventListener('mouseleave', () => {
+    btn.style.transform = 'translateY(0)';
+    btn.style.boxShadow = `0 4px 15px ${config.shadowColor}`;
+  });
+
+  btn.addEventListener('click', config.onClick);
+
+  return btn;
 }
 
 // Initialize DOM Observer and UI Injection
@@ -192,28 +199,159 @@ function initializeDOMObserver() {
   }
 }
 
-// Handle Create Post button click (floating button)
-function handleCreatePostClick() {
-  console.log('[Content Script] Create Post clicked - opening LinkedIn composer');
+// Handle Generate Post with AI (floating button)
+function handleGeneratePostWithAI() {
+  console.log('[Content Script] Generate Post with AI clicked');
 
-  // Find the "Start a post" button in LinkedIn and click it
-  const startPostBtn = document.querySelector('[aria-label*="Start a post"], [aria-label*="Crear publicación"]') as HTMLElement;
+  // Open modal to get the topic/idea
+  modal.open({
+    title: '✨ Generar Post con IA',
+    description: '¿Sobre qué quieres escribir? Describe tu idea o tema y generaré un post completo para LinkedIn.',
+    placeholder: 'Ejemplo: "Anunciar el lanzamiento de nuestro nuevo producto" o "Compartir aprendizajes sobre trabajo remoto"...',
+    primaryButton: 'Generar Post',
+    secondaryButton: 'Cancelar',
+    maxLength: 500,
+    showCharCount: true,
+    onPrimary: async (topic: string) => {
+      console.log('[Content Script] Generating post for topic:', topic);
 
-  if (startPostBtn) {
-    startPostBtn.click();
-    console.log('[Content Script] LinkedIn composer opened');
-  } else {
-    console.error('[Content Script] Could not find Start a post button');
-    alert('No se pudo abrir el editor de LinkedIn. Por favor, abre manualmente.');
-  }
+      // TODO: Call AI service to generate post
+      // For now, simulate
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      const generatedPost = `🚀 Post generado sobre: "${topic}"\n\n[Aquí iría el post generado por la IA]\n\n(Funcionalidad de IA próximamente)`;
+
+      // Open LinkedIn composer
+      const startPostBtn = document.querySelector('[aria-label*="Start a post"], [aria-label*="Crear publicación"]') as HTMLElement;
+
+      if (startPostBtn) {
+        startPostBtn.click();
+        console.log('[Content Script] LinkedIn composer opened');
+
+        // Wait for composer to open and insert text
+        setTimeout(() => {
+          insertTextIntoComposer(generatedPost);
+        }, 1000);
+      } else {
+        alert(`Post generado:\n\n${generatedPost}\n\n(Copia manualmente al compositor de LinkedIn)`);
+      }
+    },
+    onSecondary: () => {
+      console.log('[Content Script] Generate cancelled');
+    },
+    onClose: () => {
+      console.log('[Content Script] Modal closed');
+    }
+  });
 }
 
-// Handle Review Profile button click (floating button)
-function handleReviewProfileClick() {
-  console.log('[Content Script] Review Profile clicked');
+// Handle Generate CV (floating button)
+function handleGenerateCV() {
+  console.log('[Content Script] Generate CV clicked');
 
-  // TODO: Issue #10 - Extract profile and generate CV
-  alert('👤 Revisar Perfil\n\nEsta función extraerá tu perfil de LinkedIn y generará un CV profesional.\n\n(Funcionalidad próximamente)');
+  // Check if we're on a profile page
+  const isProfilePage = window.location.pathname.includes('/in/');
+
+  if (!isProfilePage) {
+    alert('📄 Generar CV\n\nPor favor, ve a tu perfil de LinkedIn primero.\n\nLuego haz click en este botón para extraer tu información y generar un CV.');
+    return;
+  }
+
+  console.log('[Content Script] Extracting profile data...');
+
+  // TODO: Extract profile data
+  const profileData = extractProfileData();
+
+  if (!profileData.name) {
+    alert('No se pudo extraer la información del perfil.\n\nAsegúrate de estar en tu página de perfil.');
+    return;
+  }
+
+  // Show confirmation and generate CV
+  modal.open({
+    title: '📄 Generar mi CV',
+    description: `He extraído tu perfil:\n\n• Nombre: ${profileData.name}\n• Título: ${profileData.headline}\n• Experiencias: ${profileData.experienceCount}\n\n¿Generar CV profesional?`,
+    placeholder: 'Agrega notas adicionales (opcional)...',
+    primaryButton: 'Generar CV',
+    secondaryButton: 'Cancelar',
+    maxLength: 500,
+    showCharCount: false,
+    onPrimary: async (notes: string) => {
+      console.log('[Content Script] Generating CV with notes:', notes);
+
+      // TODO: Call AI service to generate CV
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      alert('🎉 CV Generado!\n\n(Aquí se descargaría el CV en PDF)\n\n(Funcionalidad de generación próximamente)');
+    },
+    onSecondary: () => {
+      console.log('[Content Script] CV generation cancelled');
+    },
+    onClose: () => {
+      console.log('[Content Script] Modal closed');
+    }
+  });
+}
+
+// Handle Improve Profile (floating button)
+function handleImproveProfile() {
+  console.log('[Content Script] Improve Profile clicked');
+
+  // Check if we're on a profile page
+  const isProfilePage = window.location.pathname.includes('/in/');
+
+  if (!isProfilePage) {
+    alert('🔧 Mejorar mi Perfil\n\nPor favor, ve a tu perfil de LinkedIn primero.\n\nLuego haz click en este botón para mejorar automáticamente todas las secciones.');
+    return;
+  }
+
+  console.log('[Content Script] Extracting profile data for improvement...');
+
+  // Extract profile data
+  const profileData = extractProfileData();
+
+  if (!profileData.name) {
+    alert('No se pudo extraer la información del perfil.\n\nAsegúrate de estar en tu página de perfil.');
+    return;
+  }
+
+  // Show what will be improved
+  const sectionsToImprove = [];
+  if (profileData.about) sectionsToImprove.push('Acerca de');
+  if (profileData.experienceCount > 0) sectionsToImprove.push(`${profileData.experienceCount} Experiencias`);
+
+  const confirmMessage = `🔧 Mejorar Perfil\n\nVoy a mejorar estas secciones:\n${sectionsToImprove.map(s => `• ${s}`).join('\n')}\n\n¿Continuar?`;
+
+  if (!confirm(confirmMessage)) {
+    return;
+  }
+
+  console.log('[Content Script] Starting profile improvement...');
+
+  // TODO: Call AI service to improve each section
+  // TODO: Automatically edit and save each section
+
+  alert('⚙️ Mejorando perfil...\n\n(La IA está analizando y mejorando cada sección)\n\n(Funcionalidad de auto-edición próximamente)\n\nPor ahora, te mostraré las sugerencias para que las copies manualmente.');
+
+  // For now, just show improvements in modal
+  setTimeout(() => {
+    modal.open({
+      title: '✨ Sugerencias de Mejora',
+      description: 'Aquí están las mejoras sugeridas por la IA:\n\n(Cópialas manualmente a tu perfil por ahora)',
+      placeholder: '[Sugerencias de mejora generadas por IA]',
+      initialValue: `Ejemplo de mejora para "Acerca de":\n\n${profileData.about || 'Tu descripción actual'}\n\n→ Versión mejorada:\n\n[Aquí iría la versión mejorada por IA con mejor storytelling, keywords, etc.]`,
+      primaryButton: 'Entendido',
+      secondaryButton: undefined,
+      maxLength: 3000,
+      showCharCount: false,
+      onPrimary: async () => {
+        console.log('[Content Script] User acknowledged improvements');
+      },
+      onClose: () => {
+        console.log('[Content Script] Modal closed');
+      }
+    });
+  }, 2000);
 }
 
 // Handle Improve Post button click
@@ -262,6 +400,97 @@ function handleImprovePost(composerElement: HTMLElement) {
       console.log('[Content Script] Modal closed');
     }
   });
+}
+
+// Helper: Extract profile data from LinkedIn
+function extractProfileData() {
+  console.log('[Content Script] Extracting profile data...');
+
+  const data: any = {
+    name: '',
+    headline: '',
+    about: '',
+    experienceCount: 0,
+    educationCount: 0
+  };
+
+  try {
+    // Name (main profile name)
+    const nameElement = document.querySelector('h1.text-heading-xlarge, h1[class*="profile-name"]');
+    data.name = nameElement?.textContent?.trim() || '';
+
+    // Headline (professional title)
+    const headlineElement = document.querySelector('.text-body-medium[class*="break-words"], div[class*="profile-headline"]');
+    data.headline = headlineElement?.textContent?.trim() || '';
+
+    // About section
+    const aboutSection = document.querySelector('#about')?.parentElement;
+    const aboutText = aboutSection?.querySelector('.inline-show-more-text, .display-flex span[aria-hidden="true"]');
+    data.about = aboutText?.textContent?.trim() || '';
+
+    // Experience count
+    const experienceSection = document.querySelector('#experience')?.parentElement;
+    const experienceItems = experienceSection?.querySelectorAll('li.artdeco-list__item, li[class*="profile-section-card"]');
+    data.experienceCount = experienceItems?.length || 0;
+
+    // Education count
+    const educationSection = document.querySelector('#education')?.parentElement;
+    const educationItems = educationSection?.querySelectorAll('li.artdeco-list__item, li[class*="profile-section-card"]');
+    data.educationCount = educationItems?.length || 0;
+
+    console.log('[Content Script] Profile data extracted:', data);
+  } catch (error) {
+    console.error('[Content Script] Error extracting profile data:', error);
+  }
+
+  return data;
+}
+
+// Helper: Insert text into LinkedIn composer
+function insertTextIntoComposer(text: string) {
+  console.log('[Content Script] Inserting text into composer...');
+
+  try {
+    // Try to find the editor in Shadow DOM
+    const shadowHost = document.querySelector('#interop-outlet');
+
+    if (shadowHost && (shadowHost as any).shadowRoot) {
+      const shadowRoot = (shadowHost as any).shadowRoot;
+      const editor = shadowRoot.querySelector('.ql-editor, [contenteditable="true"]') as HTMLElement;
+
+      if (editor) {
+        // Insert text
+        editor.focus();
+        editor.textContent = text;
+
+        // Trigger input event so LinkedIn knows content changed
+        const inputEvent = new Event('input', { bubbles: true });
+        editor.dispatchEvent(inputEvent);
+
+        console.log('[Content Script] Text inserted successfully');
+        return true;
+      }
+    }
+
+    // Fallback: try regular DOM
+    const editor = document.querySelector('.ql-editor, [contenteditable="true"]') as HTMLElement;
+    if (editor) {
+      editor.focus();
+      editor.textContent = text;
+
+      const inputEvent = new Event('input', { bubbles: true });
+      editor.dispatchEvent(inputEvent);
+
+      console.log('[Content Script] Text inserted successfully (regular DOM)');
+      return true;
+    }
+
+    console.error('[Content Script] Could not find editor to insert text');
+    return false;
+  } catch (error) {
+    console.error('[Content Script] Error inserting text:', error);
+    return false;
+  }
 }
 
 // Wait for page to be ready
