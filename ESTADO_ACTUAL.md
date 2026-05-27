@@ -5,31 +5,43 @@ Versión: 0.1.0+
 
 ## ✅ FEATURES COMPLETAMENTE IMPLEMENTADAS
 
-### 1. **Generar Post con IA** ✅
+### 1. **Generar Post con IA** ✅ ⭐ NEW: Writing Styles
 - Selector de idioma (Español/Inglés)
+- **NUEVO: Selector de estilo de escritura (7 opciones)**
+  - 💼 Professional (formal, corporativo)
+  - ⚙️ Technical Senior (como Senior Engineer)
+  - 😊 Casual/Friendly (conversacional, evita sonar corporativo)
+  - 🎯 Recruiter-Friendly (optimizado para búsqueda de empleo)
+  - 🚀 Founder Style (visionario, liderazgo)
+  - ⚡ Concise & Direct (breve, al punto)
+  - 📖 Storytelling (narrativo, emocional)
 - Modal para introducir tema/idea
 - Generación de post optimizado para LinkedIn
 - Inserción automática en compositor de LinkedIn
-- Soporte para tono y audiencia
 
 **Flujo:**
 1. Click en "✨ Generar Post con IA" (botón flotante)
 2. Selecciona idioma (🇪🇸 / 🇬🇧)
-3. Escribe el tema
-4. IA genera post
-5. Se inserta automáticamente en LinkedIn
+3. **Selecciona estilo de escritura (7 opciones)**
+4. Escribe el tema
+5. IA genera post con el estilo seleccionado
+6. Se inserta automáticamente en LinkedIn
 
-### 2. **Mejorar Post Existente** ✅
+### 2. **Mejorar Post Existente** ✅ ⭐ NEW: Writing Styles
 - Botón dentro del compositor de LinkedIn
+- **NUEVO: Selector de idioma + estilo de escritura**
 - Analiza y mejora posts ya escritos
 - Optimiza engagement y claridad
-- No requiere selector de idioma (detecta el original)
+- Aplica el estilo seleccionado
 
 **Flujo:**
 1. Escribe post en LinkedIn
 2. Click en "✨ Mejorar Post" (botón dentro del compositor)
-3. IA mejora el post
-4. Se reemplaza automáticamente
+3. Selecciona idioma (🇪🇸 / 🇬🇧)
+4. **Selecciona estilo de escritura (7 opciones)**
+5. Revisa/edita contenido
+6. IA mejora el post con el estilo seleccionado
+7. Se reemplaza automáticamente
 
 ### 3. **Generar CV** ✅
 - Selector de idioma (Español/Inglés)
@@ -232,46 +244,50 @@ Todos con soporte bilingüe (es/en):
 
 ## 📦 BUILD STATUS
 
-**Última compilación:** ✅ Exitosa
+**Última compilación:** ✅ Exitosa (con Writing Styles)
 ```bash
 npm run build
-# webpack 5.106.2 compiled with 3 warnings in 1325 ms
+# webpack 5.106.2 compiled with 3 warnings in 4210 ms
 ```
 
 **Warnings:**
-- Asset size limit: 339 KB (content script)
-- Entrypoint size limit: 339 KB
+- Asset size limit: 372 KB (content script) - ⬆️ +33KB por writing styles
+- Entrypoint size limit: 372 KB
 - Recomendación: code-splitting (no crítico para extensión)
 
 **Tamaños:**
-- content/linkedin-content.js: 339 KB
+- content/linkedin-content.js: 372 KB (antes: 339 KB)
 - background/service-worker.js: 49.4 KB
 - options/options.js: 31.9 KB
 - popup/popup.js: 8.58 KB
 
+**Incremento:** +33 KB por el nuevo selector de estilos y prompts personalizados
+
 ---
 
-## 🔄 CAMBIOS PENDIENTES DE COMMIT
+## ✅ ÚLTIMOS COMMITS
 
-### Archivos Modificados
-- `src/content/ai-helper.ts` (agregado soporte bilingüe)
-- `src/content/linkedin-content.ts` (integrado language selector + profile sections)
-
-### Archivos Nuevos
-- `src/content/language-selector.ts` (modal de selección de idioma)
-- `LANGUAGE_AND_SECTIONS_PLAN.md` (documentación de features)
-
-### Git Status
+### Commit 1: Bilingual Support + Profile Sections
 ```bash
-git status
-# On branch main
-# Changes not staged for commit:
-#   modified:   src/content/ai-helper.ts
-#   modified:   src/content/linkedin-content.ts
-# Untracked files:
-#   LANGUAGE_AND_SECTIONS_PLAN.md
-#   src/content/language-selector.ts
+d7f23e8 - feat: Add bilingual support (ES/EN) and profile sections selector
 ```
+**Features:**
+- Language selector (ES/EN) para todas las features
+- Profile sections modal (Analysis, Headline, About)
+- Individual copy buttons + Copy All
+
+### Commit 2: Writing Styles (LATEST)
+```bash
+6ac1e2a - feat: Add 7 customizable writing styles for LinkedIn posts
+```
+**Features:**
+- 7 estilos de escritura profesionales
+- Selector de estilo visual con cards
+- Aplicado a Generate Post y Improve Post
+- Prompts personalizados por estilo
+- Soporte bilingüe completo
+
+**Status Git:** ✅ Todo commiteado y pusheado a GitHub
 
 ---
 
