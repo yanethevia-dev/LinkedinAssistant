@@ -260,12 +260,15 @@ function handleGeneratePostWithAI() {
 // Handle Generate CV (floating button)
 function handleGenerateCV() {
   console.log('[Content Script] Generate CV clicked');
+  console.log('[Content Script] Current URL:', window.location.href);
+  console.log('[Content Script] Pathname:', window.location.pathname);
 
   // Check if we're on a profile page
   const isProfilePage = window.location.pathname.includes('/in/');
+  console.log('[Content Script] Is profile page:', isProfilePage);
 
   if (!isProfilePage) {
-    alert('📄 Generar CV\n\nPor favor, ve a tu perfil de LinkedIn primero.\n\nLuego haz click en este botón para extraer tu información y generar un CV.');
+    alert('📄 Generar CV\n\nPor favor, ve a tu perfil de LinkedIn primero.\n\nURL actual: ' + window.location.pathname + '\n\nDebes estar en una URL como: /in/tu-nombre/');
     return;
   }
 
@@ -274,8 +277,11 @@ function handleGenerateCV() {
   // Extract profile data with details
   const profileData = extractProfileData(true); // true = detailed extraction
 
+  console.log('[Content Script] Extracted name:', profileData.name);
+  console.log('[Content Script] Extracted headline:', profileData.headline);
+
   if (!profileData.name) {
-    alert('No se pudo extraer la información del perfil.\n\nAsegúrate de estar en tu página de perfil.');
+    alert('No se pudo extraer la información del perfil.\n\nDebug info:\n- URL: ' + window.location.pathname + '\n- Nombre encontrado: ' + (profileData.name || 'NO') + '\n\nPor favor:\n1. Asegúrate de estar en TU perfil\n2. Espera a que la página cargue completamente\n3. Intenta hacer scroll hacia abajo\n4. Abre la consola del navegador (F12) para ver más detalles');
     return;
   }
 
@@ -346,12 +352,15 @@ function handleGenerateCV() {
 // Handle Improve Profile (floating button)
 function handleImproveProfile() {
   console.log('[Content Script] Improve Profile clicked');
+  console.log('[Content Script] Current URL:', window.location.href);
+  console.log('[Content Script] Pathname:', window.location.pathname);
 
   // Check if we're on a profile page
   const isProfilePage = window.location.pathname.includes('/in/');
+  console.log('[Content Script] Is profile page:', isProfilePage);
 
   if (!isProfilePage) {
-    alert('🔧 Mejorar mi Perfil\n\nPor favor, ve a tu perfil de LinkedIn primero.\n\nLuego haz click en este botón para mejorar automáticamente todas las secciones.');
+    alert('🔧 Mejorar mi Perfil\n\nPor favor, ve a tu perfil de LinkedIn primero.\n\nURL actual: ' + window.location.pathname + '\n\nDebes estar en una URL como: /in/tu-nombre/');
     return;
   }
 
@@ -360,8 +369,11 @@ function handleImproveProfile() {
   // Extract profile data
   const profileData = extractProfileData();
 
+  console.log('[Content Script] Extracted name:', profileData.name);
+  console.log('[Content Script] Extracted headline:', profileData.headline);
+
   if (!profileData.name) {
-    alert('No se pudo extraer la información del perfil.\n\nAsegúrate de estar en tu página de perfil.');
+    alert('No se pudo extraer la información del perfil.\n\nDebug info:\n- URL: ' + window.location.pathname + '\n- Nombre encontrado: ' + (profileData.name || 'NO') + '\n\nPor favor:\n1. Asegúrate de estar en TU perfil\n2. Espera a que la página cargue completamente\n3. Intenta hacer scroll hacia abajo\n4. Abre la consola del navegador (F12) para ver más detalles');
     return;
   }
 
@@ -525,13 +537,54 @@ function extractProfileData(detailed = false) {
   };
 
   try {
-    // Name (main profile name)
-    const nameElement = document.querySelector('h1.text-heading-xlarge, h1[class*="profile-name"]');
-    data.name = nameElement?.textContent?.trim() || '';
+    // Name (main profile name) - try multiple selectors
+    const nameSelectors = [
+      'h1.text-heading-xlarge',
+      'h1[class*="profile-name"]',
+      'div.mt2.relative h1',
+      'h1.inline.t-24',
+      'div[class*="pv-text-details"] h1'
+    ];
 
-    // Headline (professional title)
-    const headlineElement = document.querySelector('.text-body-medium[class*="break-words"], div[class*="profile-headline"]');
-    data.headline = headlineElement?.textContent?.trim() || '';
+    for (const selector of nameSelectors) {
+      const element = document.querySelector(selector);
+      if (element?.textContent?.trim()) {
+        data.name = element.textContent.trim();
+        console.log('[Content Script] Name found with selector:', selector);
+        break;
+      }
+    }
+
+    // If still no name, try getting ANY h1 that looks like a name
+    if (!data.name) {
+      const allH1s = Array.from(document.querySelectorAll('h1'));
+      for (const h1 of allH1s) {
+        const text = h1.textContent?.trim() || '';
+        // Name usually has 2-4 words and is not too long
+        if (text && text.split(' ').length >= 2 && text.length < 100 && !text.includes('LinkedIn')) {
+          data.name = text;
+          console.log('[Content Script] Name found from h1 scan:', text.substring(0, 50));
+          break;
+        }
+      }
+    }
+
+    // Headline (professional title) - try multiple selectors
+    const headlineSelectors = [
+      '.text-body-medium[class*="break-words"]',
+      'div[class*="profile-headline"]',
+      'div.text-body-medium.break-words',
+      'div[class*="pv-text-details"] div.text-body-medium'
+    ];
+
+    for (const selector of headlineSelectors) {
+      const element = document.querySelector(selector);
+      if (element?.textContent?.trim()) {
+        data.headline = element.textContent.trim();
+        console.log('[Content Script] Headline found with selector:', selector);
+        break;
+      }
+    }
 
     // About section
     const aboutSection = document.querySelector('#about')?.parentElement;
