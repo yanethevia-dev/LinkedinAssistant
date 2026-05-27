@@ -537,12 +537,14 @@ function extractProfileData(detailed = false) {
   };
 
   try {
-    // Name (main profile name) - try multiple selectors
+    // Name (main profile name) - LinkedIn uses H2, not H1 now!
     const nameSelectors = [
-      'h1.text-heading-xlarge',
-      'h1[class*="profile-name"]',
-      'div.mt2.relative h1',
-      'h1.inline.t-24',
+      'main h2',                        // Most common: H2 inside main
+      'h2.text-heading-xlarge',         // Legacy
+      'h1.text-heading-xlarge',         // Even older legacy
+      'h2[class*="profile"]',
+      'h1[class*="profile"]',
+      'div[class*="pv-text-details"] h2',
       'div[class*="pv-text-details"] h1'
     ];
 
@@ -555,22 +557,50 @@ function extractProfileData(detailed = false) {
       }
     }
 
-    // If still no name, try getting ANY h1 that looks like a name
+    // If still no name, scan ALL h1 AND h2 tags
     if (!data.name) {
-      const allH1s = Array.from(document.querySelectorAll('h1'));
-      for (const h1 of allH1s) {
-        const text = h1.textContent?.trim() || '';
+      const allHeadings = Array.from(document.querySelectorAll('h1, h2'));
+      console.log('[Content Script] Scanning', allHeadings.length, 'headings for name...');
+
+      for (const heading of allHeadings) {
+        const text = heading.textContent?.trim() || '';
         // Name usually has 2-4 words and is not too long
         if (text && text.split(' ').length >= 2 && text.length < 100 && !text.includes('LinkedIn')) {
           data.name = text;
-          console.log('[Content Script] Name found from h1 scan:', text.substring(0, 50));
+          console.log('[Content Script] Name found from heading scan:', text.substring(0, 50));
           break;
         }
       }
     }
 
-    // Headline (professional title) - try multiple selectors
+    // Last resort: find ANY element with visible text that looks like a name
+    if (!data.name) {
+      console.log('[Content Script] Trying last resort: scanning all elements...');
+      const mainContent = document.querySelector('main');
+      if (mainContent) {
+        const allElements = Array.from(mainContent.querySelectorAll('h1, h2, h3, div, span'));
+        for (const el of allElements) {
+          // Only elements with direct text (no children)
+          if (el.children.length === 0) {
+            const text = el.textContent?.trim() || '';
+            // First visible element that looks like a name
+            if (text && text.split(' ').length >= 2 && text.split(' ').length <= 5 &&
+                text.length > 5 && text.length < 100 &&
+                !text.includes('LinkedIn') &&
+                (el as HTMLElement).offsetHeight > 0) {
+              data.name = text;
+              console.log('[Content Script] Name found from main content scan:', text.substring(0, 50));
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Headline (professional title) - usually the div/span right after the name
     const headlineSelectors = [
+      'main h2 + div',                  // Div right after H2 (most common)
+      'main h2 ~ div',                  // Any sibling div after H2
       '.text-body-medium[class*="break-words"]',
       'div[class*="profile-headline"]',
       'div.text-body-medium.break-words',
@@ -580,9 +610,41 @@ function extractProfileData(detailed = false) {
     for (const selector of headlineSelectors) {
       const element = document.querySelector(selector);
       if (element?.textContent?.trim()) {
-        data.headline = element.textContent.trim();
-        console.log('[Content Script] Headline found with selector:', selector);
-        break;
+        const text = element.textContent.trim();
+        // Headline should be longer than name and describe a role/position
+        if (text && text.length > 10 && text.length < 300 && text !== data.name) {
+          data.headline = text;
+          console.log('[Content Script] Headline found with selector:', selector);
+          break;
+        }
+      }
+    }
+
+    // If no headline found, try finding text near the name
+    if (!data.headline && data.name) {
+      console.log('[Content Script] Trying to find headline near name...');
+      const mainContent = document.querySelector('main');
+      if (mainContent) {
+        const allDivs = Array.from(mainContent.querySelectorAll('div, span'));
+        let foundName = false;
+
+        for (const div of allDivs) {
+          const text = div.textContent?.trim() || '';
+
+          // Found the name element
+          if (text === data.name) {
+            foundName = true;
+            continue;
+          }
+
+          // Next meaningful text after name could be headline
+          if (foundName && text && text.length > 10 && text.length < 300 &&
+              text !== data.name && div.children.length === 0) {
+            data.headline = text;
+            console.log('[Content Script] Headline found near name:', text.substring(0, 50));
+            break;
+          }
+        }
       }
     }
 
