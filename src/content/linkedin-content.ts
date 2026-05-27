@@ -32,27 +32,91 @@ try {
   console.error('[Content Script] Error sending message:', error);
 }
 
-// Simple test: Add a visual indicator that extension is loaded
-function addLoadIndicator() {
-  console.log('[LinkedIn Assistant] addLoadIndicator() called');
+// Create floating action buttons in the feed
+function createFloatingButtons() {
+  console.log('[LinkedIn Assistant] Creating floating action buttons...');
 
-  const indicator = document.createElement('div');
-  indicator.id = 'lia-loaded-indicator';
-  indicator.textContent = '✓ LinkedIn Assistant Loaded';
-  indicator.style.cssText = `
+  // Check if already created
+  if (document.getElementById('lia-floating-buttons')) {
+    console.log('[LinkedIn Assistant] Floating buttons already exist');
+    return;
+  }
+
+  // Container for floating buttons
+  const container = document.createElement('div');
+  container.id = 'lia-floating-buttons';
+  container.style.cssText = `
     position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #0a66c2;
-    color: white;
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
+    bottom: 30px;
+    right: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     z-index: 9999;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     animation: slideInFromRight 0.3s ease;
   `;
+
+  // Button 1: Create Post
+  const createPostBtn = document.createElement('button');
+  createPostBtn.id = 'lia-btn-create-post';
+  createPostBtn.innerHTML = '✨ Crear Post';
+  createPostBtn.style.cssText = `
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    transition: all 0.3s ease;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    white-space: nowrap;
+  `;
+
+  createPostBtn.addEventListener('mouseenter', () => {
+    createPostBtn.style.transform = 'translateY(-3px)';
+    createPostBtn.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.5)';
+  });
+
+  createPostBtn.addEventListener('mouseleave', () => {
+    createPostBtn.style.transform = 'translateY(0)';
+    createPostBtn.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+  });
+
+  createPostBtn.addEventListener('click', handleCreatePostClick);
+
+  // Button 2: Review Profile
+  const reviewProfileBtn = document.createElement('button');
+  reviewProfileBtn.id = 'lia-btn-review-profile';
+  reviewProfileBtn.innerHTML = '👤 Revisar Perfil';
+  reviewProfileBtn.style.cssText = `
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+    transition: all 0.3s ease;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    white-space: nowrap;
+  `;
+
+  reviewProfileBtn.addEventListener('mouseenter', () => {
+    reviewProfileBtn.style.transform = 'translateY(-3px)';
+    reviewProfileBtn.style.boxShadow = '0 6px 20px rgba(245, 87, 108, 0.5)';
+  });
+
+  reviewProfileBtn.addEventListener('mouseleave', () => {
+    reviewProfileBtn.style.transform = 'translateY(0)';
+    reviewProfileBtn.style.boxShadow = '0 4px 15px rgba(245, 87, 108, 0.4)';
+  });
+
+  reviewProfileBtn.addEventListener('click', handleReviewProfileClick);
 
   // Add animation
   const style = document.createElement('style');
@@ -70,33 +134,11 @@ function addLoadIndicator() {
   `;
   document.head.appendChild(style);
 
-  document.body.appendChild(indicator);
-  console.log('[LinkedIn Assistant] Indicator added to page');
-  console.log('[LinkedIn Assistant] Toast should be visible at bottom-right corner');
+  container.appendChild(createPostBtn);
+  container.appendChild(reviewProfileBtn);
+  document.body.appendChild(container);
 
-  // Remove after 10 seconds (increased for debugging)
-  setTimeout(() => {
-    console.log('[LinkedIn Assistant] Removing toast indicator...');
-    indicator.style.animation = 'slideOutToRight 0.3s ease';
-    setTimeout(() => {
-      indicator.remove();
-      console.log('[LinkedIn Assistant] Toast removed');
-    }, 300);
-  }, 10000);
-
-  // Add slide out animation
-  style.textContent += `
-    @keyframes slideOutToRight {
-      from {
-        transform: translateX(0);
-        opacity: 1;
-      }
-      to {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-    }
-  `;
+  console.log('[LinkedIn Assistant] Floating buttons created');
 }
 
 // Initialize DOM Observer and UI Injection
@@ -104,18 +146,17 @@ function initializeDOMObserver() {
   console.log('[Content Script] Initializing DOM Observer...');
 
   try {
-    // Register callback for post composers
+    // Register callback for post composers (modal opened)
     domObserver.on('post-composer', (observed: ObservedElement) => {
-    console.log('[Content Script] Post composer detected:', observed.element);
+    console.log('[Content Script] Post composer detected (modal opened)');
 
-    // Inject buttons into the composer
-    const injected = uiInjector.injectPostComposerButtons(observed.element, {
-      onGenerate: () => handleGeneratePost(observed.element),
+    // Inject ONLY "Improve Post" button into the composer
+    const injected = uiInjector.injectImproveButton(observed.element, {
       onImprove: () => handleImprovePost(observed.element)
     });
 
     if (injected) {
-      console.log('[Content Script] Buttons injected into composer');
+      console.log('[Content Script] Improve button injected into composer');
     }
   });
 
@@ -151,36 +192,28 @@ function initializeDOMObserver() {
   }
 }
 
-// Handle Generate Post button click
-function handleGeneratePost(composerElement: HTMLElement) {
-  console.log('[Content Script] Generate Post clicked');
+// Handle Create Post button click (floating button)
+function handleCreatePostClick() {
+  console.log('[Content Script] Create Post clicked - opening LinkedIn composer');
 
-  // Open modal to get post topic/idea
-  modal.open({
-    title: '✨ Generate Post',
-    description: 'Tell me what you want to write about, and I\'ll generate a LinkedIn post for you.',
-    placeholder: 'Example: "Share insights about remote work culture" or "Announce our new product launch"...',
-    primaryButton: 'Generate Post',
-    secondaryButton: 'Cancel',
-    maxLength: 500,
-    showCharCount: true,
-    onPrimary: async (topic: string) => {
-      console.log('[Content Script] Generating post for topic:', topic);
+  // Find the "Start a post" button in LinkedIn and click it
+  const startPostBtn = document.querySelector('[aria-label*="Start a post"], [aria-label*="Crear publicación"]') as HTMLElement;
 
-      // TODO: Issue #7 - Call AI service to generate post
-      // For now, simulate with timeout
-      await new Promise(resolve => setTimeout(resolve, 2000));
+  if (startPostBtn) {
+    startPostBtn.click();
+    console.log('[Content Script] LinkedIn composer opened');
+  } else {
+    console.error('[Content Script] Could not find Start a post button');
+    alert('No se pudo abrir el editor de LinkedIn. Por favor, abre manualmente.');
+  }
+}
 
-      // TODO: Insert generated content into composer
-      alert(`🎉 Post generated!\n\nTopic: ${topic}\n\n(Actual AI generation coming in Issue #7)`);
-    },
-    onSecondary: () => {
-      console.log('[Content Script] Generate cancelled');
-    },
-    onClose: () => {
-      console.log('[Content Script] Modal closed');
-    }
-  });
+// Handle Review Profile button click (floating button)
+function handleReviewProfileClick() {
+  console.log('[Content Script] Review Profile clicked');
+
+  // TODO: Issue #10 - Extract profile and generate CV
+  alert('👤 Revisar Perfil\n\nEsta función extraerá tu perfil de LinkedIn y generará un CV profesional.\n\n(Funcionalidad próximamente)');
 }
 
 // Handle Improve Post button click
@@ -238,11 +271,11 @@ if (document.readyState === 'loading') {
   console.log('[LinkedIn Assistant] Waiting for DOMContentLoaded');
   document.addEventListener('DOMContentLoaded', () => {
     console.log('[LinkedIn Assistant] DOMContentLoaded fired');
-    addLoadIndicator();
+    createFloatingButtons();
     initializeDOMObserver();
   });
 } else {
   console.log('[LinkedIn Assistant] Document already ready, initializing now');
-  addLoadIndicator();
+  createFloatingButtons();
   initializeDOMObserver();
 }

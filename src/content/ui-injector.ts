@@ -22,24 +22,23 @@ export class UIInjector {
   }
 
   /**
-   * Inject Generate & Improve buttons into a post composer
+   * Inject ONLY Improve button into a post composer (NEW SPEC)
    */
-  injectPostComposerButtons(
+  injectImproveButton(
     composerElement: HTMLElement,
     callbacks: {
-      onGenerate: () => void;
       onImprove: () => void;
     }
   ): boolean {
     // Check if already injected
     if (this.injectedButtons.has(composerElement)) {
-      console.log('[UIInjector] Buttons already injected for this composer');
+      console.log('[UIInjector] Button already injected for this composer');
       return false;
     }
 
-    console.log('[UIInjector] Injecting buttons into post composer');
+    console.log('[UIInjector] Injecting Improve button into composer');
 
-    // Find the best place to inject buttons
+    // Find the best place to inject button
     const injectionPoint = this.findPostComposerInjectionPoint(composerElement);
 
     if (!injectionPoint) {
@@ -50,31 +49,23 @@ export class UIInjector {
     // Create button container
     const container = this.createButtonContainer();
 
-    // Create Generate button
-    const generateBtn = this.createButton({
-      text: '✨ Generate Post',
-      type: 'generate',
-      onClick: callbacks.onGenerate
-    });
-
-    // Create Improve button
+    // Create ONLY Improve button
     const improveBtn = this.createButton({
-      text: '🚀 Improve Post',
+      text: '🚀 Mejorar Post',
       type: 'improve',
       onClick: callbacks.onImprove
     });
 
-    // Add buttons to container
-    container.appendChild(generateBtn.element);
+    // Add button to container
     container.appendChild(improveBtn.element);
 
     // Inject into DOM
     injectionPoint.appendChild(container);
 
-    // Track injected buttons
-    this.injectedButtons.set(composerElement, [generateBtn, improveBtn]);
+    // Track injected button
+    this.injectedButtons.set(composerElement, [improveBtn]);
 
-    console.log('[UIInjector] Buttons injected successfully');
+    console.log('[UIInjector] Improve button injected successfully');
     return true;
   }
 
