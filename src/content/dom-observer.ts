@@ -134,70 +134,107 @@ export class LinkedInDOMObserver {
   }
 
   /**
-   * Detect the main post composer - FIND THE EDITOR DIRECTLY
+   * Detect the main post composer - CHECK SHADOW DOM FIRST
    */
   private detectPostComposer() {
     console.log('[DOMObserver] === Scanning for post composer ===');
 
-    // LinkedIn doesn't use [role="dialog"] - search for EDITORS directly
+    // Check for Shadow DOM first (LinkedIn 2026)
+    const shadowHost = document.querySelector('#interop-outlet');
+
+    if (shadowHost && (shadowHost as any).shadowRoot) {
+      console.log('[DOMObserver] Shadow DOM found! Searching inside...');
+      this.scanShadowDOM((shadowHost as any).shadowRoot);
+      return;
+    }
+
+    console.log('[DOMObserver] No Shadow DOM, searching regular DOM...');
+    this.scanRegularDOM();
+  }
+
+  /**
+   * Scan inside Shadow DOM for editors
+   */
+  private scanShadowDOM(shadowRoot: ShadowRoot) {
     const selectors = [
-      '.tiptap',                    // TipTap editor (LinkedIn 2026)
-      '.ProseMirror',               // ProseMirror (TipTap base)
-      '.ql-editor',                 // Quill editor (legacy)
-      '[contenteditable]'           // Any contenteditable as fallback
+      '[contenteditable]',          // ANY contenteditable
+      '.tiptap',                    // TipTap editor
+      '.ProseMirror',               // ProseMirror
+      '.ql-editor'                  // Quill (unlikely but check)
+    ];
+
+    const foundElements = new Set<HTMLElement>();
+
+    for (const selector of selectors) {
+      const elements = shadowRoot.querySelectorAll(selector);
+      console.log(`[DOMObserver]   Shadow DOM "${selector}" → ${elements.length}`);
+
+      elements.forEach((el) => {
+        const element = el as HTMLElement;
+
+        if (this.observedElements.has(element)) return;
+        if (!this.isVisible(element)) return;
+
+        console.log('[DOMObserver]   ✓ Visible editor in Shadow DOM:', element.className.substring(0, 50));
+        foundElements.add(element);
+      });
+    }
+
+    this.processFoundElements(foundElements);
+  }
+
+  /**
+   * Scan regular DOM for editors (fallback)
+   */
+  private scanRegularDOM() {
+    const selectors = [
+      '[contenteditable]',
+      '.tiptap',
+      '.ProseMirror',
+      '.ql-editor'
     ];
 
     const foundElements = new Set<HTMLElement>();
 
     for (const selector of selectors) {
       const elements = document.querySelectorAll(selector);
-      console.log(`[DOMObserver]   Trying "${selector}" → found ${elements.length}`);
+      console.log(`[DOMObserver]   Regular DOM "${selector}" → ${elements.length}`);
 
       elements.forEach((el) => {
         const element = el as HTMLElement;
 
-        // Skip if already observed
-        if (this.observedElements.has(element)) {
-          return;
-        }
+        if (this.observedElements.has(element)) return;
+        if (!this.isVisible(element)) return;
 
-        // Must be visible
-        if (!this.isVisible(element)) {
-          return;
-        }
-
-        // Must look like a post composer (not a comment or other input)
-        const parent = element.closest('.share-creation-state, .artdeco-modal, .msg-form') ||
-                      element.parentElement?.parentElement; // Give it some leeway
-
-        if (parent) {
-          console.log('[DOMObserver]   ✓ Found visible editor:', element.className.substring(0, 50));
-          foundElements.add(element);
-        }
+        console.log('[DOMObserver]   ✓ Visible editor:', element.className.substring(0, 50));
+        foundElements.add(element);
       });
     }
 
+    this.processFoundElements(foundElements);
+  }
+
+  /**
+   * Process found editors and notify callbacks
+   */
+  private processFoundElements(foundElements: Set<HTMLElement>) {
     // Filter out children if parent is also in the set
     const rootElements = Array.from(foundElements).filter(element => {
       for (const otherElement of foundElements) {
         if (otherElement !== element && otherElement.contains(element)) {
-          console.log('[DOMObserver]   Filtering out child element');
           return false;
         }
       }
       return true;
     });
 
-    console.log(`[DOMObserver] Total unique editors found: ${rootElements.length}`);
+    console.log(`[DOMObserver] Total editors to inject: ${rootElements.length}`);
 
-    // Notify for each root element
     rootElements.forEach(element => {
       console.log('[DOMObserver]   ✓✓✓ NOTIFYING CALLBACKS ✓✓✓');
       this.observedElements.set(element, 'post-composer');
       this.notifyCallbacks('post-composer', element);
     });
-
-    console.log('[DOMObserver] === Scan complete ===');
   }
 
 
