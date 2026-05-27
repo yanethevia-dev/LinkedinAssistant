@@ -284,22 +284,74 @@ TASKS:
 
 OBJETIVO: Crear un CV OPTIMIZADO Y ATRACTIVO que destaque los logros y fortalezas del candidato.
 
-ESTRUCTURA:
-1. RESUMEN PROFESIONAL (3-4 líneas impactantes)
-2. EXPERIENCIA PROFESIONAL (ordenada cronológicamente, enfocada en logros)
-3. EDUCACIÓN
-4. HABILIDADES CLAVE (técnicas y blandas)
-5. LOGROS DESTACADOS (si aplica)
+ESTRUCTURA REQUERIDA:
+1. Nombre completo (primera línea)
+2. Línea en blanco
+3. RESUMEN PROFESIONAL
+   - 3-4 líneas impactantes que resumen valor y experiencia
+4. Línea en blanco
+5. EXPERIENCIA PROFESIONAL
+   - Cada trabajo en este formato:
+     Título del Puesto
+     Empresa | Período (Mes Año - Mes Año)
+     • Logro cuantificable con métricas
+     • Logro cuantificable con métricas
+     • Logro cuantificable con métricas
+   - Línea en blanco entre trabajos
+6. Línea en blanco
+7. EDUCACIÓN
+   - Título/Grado
+   - Institución | Año
+8. Línea en blanco
+9. HABILIDADES CLAVE
+   - Técnicas: lista separada por comas
+   - Blandas: lista separada por comas
 
-FORMATO:
-• Usa MAYÚSCULAS para secciones
-• Usa viñetas (•) para listas
-• Cuantifica logros cuando sea posible (%, números, métricas)
-• Verbos de acción: Lideré, Implementé, Optimicé, Desarrollé
-• Formato claro y escaneable (ATS-friendly)
-• NO uses markdown, solo texto plano con formato
-• ESCRIBE TODO EN ESPAÑOL
+FORMATO CRÍTICO:
+⚠️ NUNCA uses **negrita** - escribe texto normal
+⚠️ NUNCA uses __subrayado__ - escribe texto normal
+⚠️ NUNCA uses ###headers - usa MAYÚSCULAS simples
+⚠️ NUNCA uses [enlaces](url) - escribe texto simple
+⚠️ PROHIBIDO usar símbolos markdown: **, __, ~~, ##, ###, [], ()
 
+✅ SÍ usa:
+• Viñetas con símbolo • (alt+0149)
+• MAYÚSCULAS para títulos de secciones
+• Líneas en blanco para separar secciones
+• Números y porcentajes para logros
+• Formato: Empresa | Período
+
+EJEMPLO DE FORMATO CORRECTO:
+---
+Juan Pérez
+
+RESUMEN PROFESIONAL
+Senior Software Engineer con 8+ años de experiencia en desarrollo full-stack. Especializado en arquitecturas escalables y liderazgo técnico. Historial comprobado de entregar productos de alto impacto.
+
+EXPERIENCIA PROFESIONAL
+
+Senior Software Engineer
+TechCorp | Enero 2020 - Presente
+• Lideré migración a microservicios reduciendo latencia 60%
+• Implementé CI/CD pipeline mejorando deployment time en 80%
+• Mentoricé a 5 developers junior alcanzando nivel mid en 12 meses
+
+Software Engineer
+StartupXYZ | Marzo 2017 - Diciembre 2019
+• Desarrollé plataforma web sirviendo 100K+ usuarios activos
+• Optimicé queries SQL reduciendo tiempo de respuesta 45%
+• Colaboré en arquitectura cloud ahorrando $50K/año
+
+EDUCACIÓN
+Ingeniería en Sistemas
+Universidad Nacional | 2016
+
+HABILIDADES CLAVE
+Técnicas: JavaScript, React, Node.js, Python, AWS, Docker, Kubernetes, PostgreSQL
+Blandas: Liderazgo técnico, Mentoring, Comunicación, Trabajo en equipo
+---
+
+ESCRIBE TODO EN ESPAÑOL
 TONO: Profesional, directo, orientado a logros`
         },
         en: {
@@ -308,22 +360,74 @@ TONO: Profesional, directo, orientado a logros`
 
 OBJECTIVE: Create an OPTIMIZED AND ATTRACTIVE CV that highlights the candidate's achievements and strengths.
 
-STRUCTURE:
-1. PROFESSIONAL SUMMARY (3-4 impactful lines)
-2. PROFESSIONAL EXPERIENCE (chronologically ordered, focused on achievements)
-3. EDUCATION
-4. KEY SKILLS (technical and soft)
-5. NOTABLE ACHIEVEMENTS (if applicable)
+REQUIRED STRUCTURE:
+1. Full name (first line)
+2. Blank line
+3. PROFESSIONAL SUMMARY
+   - 3-4 impactful lines summarizing value and experience
+4. Blank line
+5. PROFESSIONAL EXPERIENCE
+   - Each job in this format:
+     Job Title
+     Company | Period (Month Year - Month Year)
+     • Quantifiable achievement with metrics
+     • Quantifiable achievement with metrics
+     • Quantifiable achievement with metrics
+   - Blank line between jobs
+6. Blank line
+7. EDUCATION
+   - Degree/Title
+   - Institution | Year
+8. Blank line
+9. KEY SKILLS
+   - Technical: comma-separated list
+   - Soft: comma-separated list
 
-FORMAT:
-• Use UPPERCASE for sections
-• Use bullet points (•) for lists
-• Quantify achievements when possible (%, numbers, metrics)
-• Action verbs: Led, Implemented, Optimized, Developed
-• Clear and scannable format (ATS-friendly)
-• DO NOT use markdown, only plain text with formatting
-• WRITE EVERYTHING IN ENGLISH
+CRITICAL FORMAT:
+⚠️ NEVER use **bold** - write normal text
+⚠️ NEVER use __underline__ - write normal text
+⚠️ NEVER use ###headers - use simple UPPERCASE
+⚠️ NEVER use [links](url) - write simple text
+⚠️ FORBIDDEN markdown symbols: **, __, ~~, ##, ###, [], ()
 
+✅ DO use:
+• Bullet points with • symbol
+• UPPERCASE for section titles
+• Blank lines to separate sections
+• Numbers and percentages for achievements
+• Format: Company | Period
+
+EXAMPLE OF CORRECT FORMAT:
+---
+John Smith
+
+PROFESSIONAL SUMMARY
+Senior Software Engineer with 8+ years of experience in full-stack development. Specialized in scalable architectures and technical leadership. Proven track record of delivering high-impact products.
+
+PROFESSIONAL EXPERIENCE
+
+Senior Software Engineer
+TechCorp | January 2020 - Present
+• Led microservices migration reducing latency by 60%
+• Implemented CI/CD pipeline improving deployment time by 80%
+• Mentored 5 junior developers achieving mid-level in 12 months
+
+Software Engineer
+StartupXYZ | March 2017 - December 2019
+• Built web platform serving 100K+ active users
+• Optimized SQL queries reducing response time by 45%
+• Collaborated on cloud architecture saving $50K/year
+
+EDUCATION
+Computer Science Engineering
+National University | 2016
+
+KEY SKILLS
+Technical: JavaScript, React, Node.js, Python, AWS, Docker, Kubernetes, PostgreSQL
+Soft: Technical leadership, Mentoring, Communication, Teamwork
+---
+
+WRITE EVERYTHING IN ENGLISH
 TONE: Professional, direct, achievement-oriented`
         }
       };
@@ -394,23 +498,68 @@ ESTRATEGIA:
 4. Usa las mismas palabras clave y terminología de la oferta
 5. Estructura el CV para que el reclutador vea inmediatamente el "match"
 
-ESTRUCTURA:
-1. RESUMEN PROFESIONAL (adaptado al rol específico)
-2. HABILIDADES CLAVE (que coincidan con requisitos)
-3. EXPERIENCIA RELEVANTE (enfocada en lo que pide la oferta)
-4. EDUCACIÓN
-5. LOGROS DESTACADOS (relacionados con el puesto)
+ESTRUCTURA REQUERIDA:
+1. Nombre completo
+2. Línea en blanco
+3. RESUMEN PROFESIONAL (adaptado específicamente al rol de la oferta)
+4. Línea en blanco
+5. HABILIDADES CLAVE (que coincidan con requisitos de la oferta)
+6. Línea en blanco
+7. EXPERIENCIA PROFESIONAL (enfocada en logros relevantes para la oferta)
+   Formato por trabajo:
+   Título del Puesto
+   Empresa | Período
+   • Logro relevante con métricas
+   • Logro relevante con métricas
+   Línea en blanco entre trabajos
+8. Línea en blanco
+9. EDUCACIÓN
+10. Línea en blanco (al final)
 
-FORMATO:
+FORMATO CRÍTICO:
+⚠️ NUNCA uses **negrita** - texto normal
+⚠️ NUNCA uses __subrayado__ - texto normal
+⚠️ NUNCA uses ###headers - MAYÚSCULAS simples
+⚠️ PROHIBIDO markdown: **, __, ~~, ##, [], ()
+
+✅ SÍ usa:
+• Viñetas con •
 • MAYÚSCULAS para secciones
-• Viñetas (•) para listas
-• Keywords de la oferta integradas naturalmente
-• Cuantifica logros
-• ATS-friendly (sistemas de tracking de candidatos)
-• NO uses markdown, solo texto plano
-• ESCRIBE TODO EN ESPAÑOL
+• Líneas en blanco entre secciones
+• Keywords de la oferta naturalmente integradas
+• Números y % para cuantificar
+• Formato: Empresa | Período
 
-TONO: Profesional, específico, orientado a demostrar que el candidato es PERFECTO para este rol`
+EJEMPLO CORRECTO:
+---
+María García
+
+RESUMEN PROFESIONAL
+Senior DevOps Engineer con 6+ años automatizando infraestructura cloud. Experiencia comprobada en Kubernetes, CI/CD y AWS mencionados en la oferta. Lista para liderar transformación DevOps.
+
+HABILIDADES CLAVE
+Cloud: AWS, Azure, Google Cloud
+Containers: Docker, Kubernetes, Helm
+CI/CD: Jenkins, GitLab CI, ArgoCD
+IaC: Terraform, Ansible, CloudFormation
+Lenguajes: Python, Bash, Go
+
+EXPERIENCIA PROFESIONAL
+
+DevOps Engineer
+CloudTech | 2020 - Presente
+• Implementé pipeline CI/CD con Jenkins reduciendo deployment time 75%
+• Migré 50+ servicios a Kubernetes mejorando disponibilidad a 99.9%
+• Automaticé infraestructura con Terraform ahorrando $80K/año
+
+EDUCACIÓN
+Ingeniería en Sistemas
+Universidad Tech | 2017
+---
+
+• ATS-friendly (sistemas de tracking)
+• ESCRIBE TODO EN ESPAÑOL
+TONO: Profesional, orientado a demostrar MATCH perfecto con la oferta`
         },
         en: {
           adapt: `ADAPT THE CV:\n• Highlight skills and experiences that match requirements\n• Use the same language and keywords from the job posting\n• Emphasize achievements relevant to this specific position\n• Prioritize related experience\n• Demonstrate how you fit perfectly for the role\n`,
@@ -425,23 +574,68 @@ STRATEGY:
 4. Use the same keywords and terminology from the offer
 5. Structure the CV so the recruiter immediately sees the "match"
 
-STRUCTURE:
-1. PROFESSIONAL SUMMARY (tailored to the specific role)
-2. KEY SKILLS (matching requirements)
-3. RELEVANT EXPERIENCE (focused on what the offer asks for)
-4. EDUCATION
-5. NOTABLE ACHIEVEMENTS (related to the position)
+REQUIRED STRUCTURE:
+1. Full name
+2. Blank line
+3. PROFESSIONAL SUMMARY (specifically tailored to the offer's role)
+4. Blank line
+5. KEY SKILLS (matching offer requirements)
+6. Blank line
+7. PROFESSIONAL EXPERIENCE (focused on achievements relevant to offer)
+   Format per job:
+   Job Title
+   Company | Period
+   • Relevant achievement with metrics
+   • Relevant achievement with metrics
+   Blank line between jobs
+8. Blank line
+9. EDUCATION
+10. Blank line (at the end)
 
-FORMAT:
+CRITICAL FORMAT:
+⚠️ NEVER use **bold** - normal text
+⚠️ NEVER use __underline__ - normal text
+⚠️ NEVER use ###headers - simple UPPERCASE
+⚠️ FORBIDDEN markdown: **, __, ~~, ##, [], ()
+
+✅ DO use:
+• Bullet points with •
 • UPPERCASE for sections
-• Bullet points (•) for lists
-• Keywords from offer integrated naturally
-• Quantify achievements
-• ATS-friendly (applicant tracking systems)
-• DO NOT use markdown, only plain text
-• WRITE EVERYTHING IN ENGLISH
+• Blank lines between sections
+• Keywords from offer naturally integrated
+• Numbers and % to quantify
+• Format: Company | Period
 
-TONE: Professional, specific, oriented to demonstrate the candidate is PERFECT for this role`
+CORRECT EXAMPLE:
+---
+Mary Johnson
+
+PROFESSIONAL SUMMARY
+Senior DevOps Engineer with 6+ years automating cloud infrastructure. Proven experience in Kubernetes, CI/CD, and AWS mentioned in the posting. Ready to lead DevOps transformation.
+
+KEY SKILLS
+Cloud: AWS, Azure, Google Cloud
+Containers: Docker, Kubernetes, Helm
+CI/CD: Jenkins, GitLab CI, ArgoCD
+IaC: Terraform, Ansible, CloudFormation
+Languages: Python, Bash, Go
+
+PROFESSIONAL EXPERIENCE
+
+DevOps Engineer
+CloudTech | 2020 - Present
+• Implemented CI/CD pipeline with Jenkins reducing deployment time by 75%
+• Migrated 50+ services to Kubernetes improving availability to 99.9%
+• Automated infrastructure with Terraform saving $80K/year
+
+EDUCATION
+Computer Systems Engineering
+Tech University | 2017
+---
+
+• ATS-friendly (applicant tracking systems)
+• WRITE EVERYTHING IN ENGLISH
+TONE: Professional, oriented to demonstrate PERFECT MATCH with the offer`
         }
       };
 
