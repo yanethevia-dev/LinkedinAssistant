@@ -79,7 +79,7 @@ const writingStyles: WritingStyleOption[] = [
 
 export function showWritingStyleSelector(
   language: 'es' | 'en',
-  onSelect: (style: WritingStyle) => void
+  onSelect: (styles: WritingStyle[]) => void
 ) {
   const overlay = document.createElement('div');
   overlay.style.cssText = `
@@ -120,8 +120,13 @@ export function showWritingStyleSelector(
     </h2>
     <p style="margin: 0; color: #666; font-size: 14px;">
       ${language === 'es'
-        ? 'Selecciona el tono que mejor represente tu voz en LinkedIn'
-        : 'Select the tone that best represents your voice on LinkedIn'}
+        ? 'Selecciona uno o varios estilos para combinarlos'
+        : 'Select one or multiple styles to combine them'}
+    </p>
+    <p style="margin: 4px 0 0; color: #0a66c2; font-size: 12px; font-weight: 600;">
+      ${language === 'es'
+        ? '💡 Puedes combinar estilos (ej: Technical + Casual = técnico pero cercano)'
+        : '💡 You can combine styles (e.g., Technical + Casual = technical but friendly)'}
     </p>
   `;
 
@@ -133,6 +138,9 @@ export function showWritingStyleSelector(
     padding: 24px;
   `;
 
+  // Track selected styles
+  const selectedStyles = new Set<WritingStyle>();
+
   // Grid of style cards
   const grid = document.createElement('div');
   grid.style.cssText = `
@@ -142,9 +150,14 @@ export function showWritingStyleSelector(
   `;
 
   writingStyles.forEach(style => {
-    const card = createStyleCard(style, language, () => {
-      overlay.remove();
-      onSelect(style.id);
+    const card = createStyleCard(style, language, (isSelected) => {
+      if (isSelected) {
+        selectedStyles.add(style.id);
+      } else {
+        selectedStyles.delete(style.id);
+      }
+      // Update confirm button state
+      updateConfirmButton();
     });
     grid.appendChild(card);
   });
@@ -159,8 +172,75 @@ export function showWritingStyleSelector(
     padding: 16px 24px;
     border-top: 1px solid #e0e0e0;
     display: flex;
-    justify-content: flex-end;
+    gap: 12px;
+    justify-content: space-between;
+    align-items: center;
   `;
+
+  // Selected count
+  const selectedCount = document.createElement('div');
+  selectedCount.style.cssText = `
+    color: #666;
+    font-size: 14px;
+  `;
+  selectedCount.textContent = language === 'es' ? 'Ninguno seleccionado' : 'None selected';
+
+  // Buttons container
+  const buttonsContainer = document.createElement('div');
+  buttonsContainer.style.cssText = `
+    display: flex;
+    gap: 12px;
+  `;
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.textContent = language === 'es' ? 'Continuar' : 'Continue';
+  confirmBtn.style.cssText = `
+    padding: 12px 24px;
+    background: #0a66c2;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    opacity: 0.5;
+  `;
+  confirmBtn.disabled = true;
+
+  const updateConfirmButton = () => {
+    const count = selectedStyles.size;
+    if (count === 0) {
+      selectedCount.textContent = language === 'es' ? 'Ninguno seleccionado' : 'None selected';
+      confirmBtn.disabled = true;
+      confirmBtn.style.opacity = '0.5';
+      confirmBtn.style.cursor = 'not-allowed';
+    } else {
+      selectedCount.textContent = language === 'es'
+        ? `${count} estilo${count > 1 ? 's' : ''} seleccionado${count > 1 ? 's' : ''}`
+        : `${count} style${count > 1 ? 's' : ''} selected`;
+      confirmBtn.disabled = false;
+      confirmBtn.style.opacity = '1';
+      confirmBtn.style.cursor = 'pointer';
+    }
+  };
+
+  confirmBtn.onmouseenter = () => {
+    if (!confirmBtn.disabled) {
+      confirmBtn.style.background = '#004182';
+    }
+  };
+  confirmBtn.onmouseleave = () => {
+    if (!confirmBtn.disabled) {
+      confirmBtn.style.background = '#0a66c2';
+    }
+  };
+  confirmBtn.onclick = () => {
+    if (selectedStyles.size > 0) {
+      overlay.remove();
+      onSelect(Array.from(selectedStyles));
+    }
+  };
 
   const cancelBtn = document.createElement('button');
   cancelBtn.textContent = language === 'es' ? 'Cancelar' : 'Cancel';
@@ -179,7 +259,11 @@ export function showWritingStyleSelector(
   cancelBtn.onmouseleave = () => cancelBtn.style.background = '#f0f0f0';
   cancelBtn.onclick = () => overlay.remove();
 
-  footer.appendChild(cancelBtn);
+  buttonsContainer.appendChild(cancelBtn);
+  buttonsContainer.appendChild(confirmBtn);
+
+  footer.appendChild(selectedCount);
+  footer.appendChild(buttonsContainer);
   modal.appendChild(footer);
   overlay.appendChild(modal);
 
@@ -215,8 +299,10 @@ export function showWritingStyleSelector(
 function createStyleCard(
   style: WritingStyleOption,
   language: 'es' | 'en',
-  onClick: () => void
+  onToggle: (isSelected: boolean) => void
 ): HTMLElement {
+  let isSelected = false;
+
   const card = document.createElement('div');
   card.style.cssText = `
     padding: 20px;
@@ -225,9 +311,30 @@ function createStyleCard(
     cursor: pointer;
     transition: all 0.2s;
     background: white;
+    position: relative;
   `;
 
-  card.innerHTML = `
+  // Checkmark indicator
+  const checkmark = document.createElement('div');
+  checkmark.style.cssText = `
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #0a66c2;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+  `;
+  checkmark.textContent = '✓';
+
+  const content = document.createElement('div');
+  content.innerHTML = `
     <div style="display: flex; align-items: center; margin-bottom: 12px;">
       <div style="font-size: 32px; margin-right: 12px;">${style.icon}</div>
       <div style="font-size: 18px; font-weight: 600; color: #333;">
@@ -239,21 +346,44 @@ function createStyleCard(
     </div>
   `;
 
+  card.appendChild(checkmark);
+  card.appendChild(content);
+
+  const updateCardStyle = () => {
+    if (isSelected) {
+      card.style.border = '2px solid #0a66c2';
+      card.style.background = '#f0f7ff';
+      checkmark.style.display = 'flex';
+    } else {
+      card.style.border = '2px solid #e0e0e0';
+      card.style.background = 'white';
+      checkmark.style.display = 'none';
+    }
+  };
+
   card.onmouseenter = () => {
-    card.style.border = '2px solid #0a66c2';
-    card.style.background = '#f0f7ff';
+    if (!isSelected) {
+      card.style.border = '2px solid #0a66c2';
+      card.style.background = '#f0f7ff';
+    }
     card.style.transform = 'translateY(-4px)';
     card.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)';
   };
 
   card.onmouseleave = () => {
-    card.style.border = '2px solid #e0e0e0';
-    card.style.background = 'white';
+    if (!isSelected) {
+      card.style.border = '2px solid #e0e0e0';
+      card.style.background = 'white';
+    }
     card.style.transform = 'translateY(0)';
     card.style.boxShadow = 'none';
   };
 
-  card.onclick = onClick;
+  card.onclick = () => {
+    isSelected = !isSelected;
+    updateCardStyle();
+    onToggle(isSelected);
+  };
 
   return card;
 }

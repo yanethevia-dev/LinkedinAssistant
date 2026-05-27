@@ -212,8 +212,8 @@ function handleGeneratePostWithAI() {
     console.log('[Content Script] Language selected:', language);
 
     // Step 2: Show writing style selector
-    showWritingStyleSelector(language, (writingStyle) => {
-      console.log('[Content Script] Writing style selected:', writingStyle);
+    showWritingStyleSelector(language, (writingStyles) => {
+      console.log('[Content Script] Writing styles selected:', writingStyles);
 
       // Step 3: Open modal to get the topic/idea
       modal.open({
@@ -237,8 +237,8 @@ function handleGeneratePostWithAI() {
             // Show loading toast
             showSuccessToast(language === 'es' ? '⏳ Generando post con IA...' : '⏳ Generating post with AI...');
 
-            // Call AI service to generate post with selected language and style
-            const generatedPost = await aiHelper.generatePost(topic, language, writingStyle);
+            // Call AI service to generate post with selected language and styles
+            const generatedPost = await aiHelper.generatePost(topic, language, writingStyles);
             console.log('[Content Script] Post generated successfully');
 
             // Open LinkedIn composer
@@ -409,8 +409,8 @@ function handleImprovePost(composerElement: HTMLElement) {
     console.log('[Content Script] Language selected for improvement:', language);
 
     // Step 2: Show writing style selector
-    showWritingStyleSelector(language, (writingStyle) => {
-      console.log('[Content Script] Writing style selected for improvement:', writingStyle);
+    showWritingStyleSelector(language, (writingStyles) => {
+      console.log('[Content Script] Writing styles selected for improvement:', writingStyles);
 
       // Step 3: Open modal with current text
       modal.open({
@@ -433,8 +433,8 @@ function handleImprovePost(composerElement: HTMLElement) {
             // Show loading toast
             showSuccessToast(language === 'es' ? '⏳ Mejorando post con IA...' : '⏳ Improving post with AI...');
 
-            // Call AI service to improve post with language and style
-            const improvedPost = await aiHelper.improvePost(text, language, writingStyle);
+            // Call AI service to improve post with language and styles
+            const improvedPost = await aiHelper.improvePost(text, language, writingStyles);
             console.log('[Content Script] Post improved successfully');
 
             // Replace text in composer with improved version

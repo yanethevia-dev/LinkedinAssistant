@@ -47,12 +47,12 @@ export class AIHelper {
   }
 
   /**
-   * Generate LinkedIn post from topic with writing style
+   * Generate LinkedIn post from topic with writing style(s)
    */
   async generatePost(
     topic: string,
     language: 'es' | 'en' = 'es',
-    writingStyle?: WritingStyle
+    writingStyles?: WritingStyle[]
   ): Promise<string> {
     try {
       // Style-specific instructions
@@ -110,10 +110,20 @@ GENERAL RULES:
 - WRITE EVERYTHING IN ENGLISH`
       };
 
-      // Build system prompt with style
+      // Build system prompt with style(s)
       let systemPrompt = baseSystemPrompts[language];
-      if (writingStyle && styleInstructions[writingStyle]) {
-        systemPrompt += '\n\n' + styleInstructions[writingStyle][language];
+      if (writingStyles && writingStyles.length > 0) {
+        systemPrompt += '\n\n' + (language === 'es' ? 'COMBINA ESTOS ESTILOS:' : 'COMBINE THESE STYLES:') + '\n';
+        writingStyles.forEach((style, index) => {
+          if (styleInstructions[style]) {
+            systemPrompt += `\n${index + 1}. ${styleInstructions[style][language]}`;
+          }
+        });
+        if (writingStyles.length > 1) {
+          systemPrompt += '\n\n' + (language === 'es'
+            ? '⚠️ IMPORTANTE: Integra todos estos estilos de forma natural y coherente. No los apliques por separado.'
+            : '⚠️ IMPORTANT: Integrate all these styles naturally and coherently. Don\'t apply them separately.');
+        }
       }
 
       const userPrompts = {
@@ -136,12 +146,12 @@ GENERAL RULES:
   }
 
   /**
-   * Improve existing LinkedIn post with writing style
+   * Improve existing LinkedIn post with writing style(s)
    */
   async improvePost(
     originalPost: string,
     language: 'es' | 'en' = 'es',
-    writingStyle?: WritingStyle
+    writingStyles?: WritingStyle[]
   ): Promise<string> {
     try {
       // Style-specific instructions (same as generatePost)
@@ -200,8 +210,18 @@ TASKS:
       };
 
       let systemPrompt = baseSystemPrompts[language];
-      if (writingStyle && styleInstructions[writingStyle]) {
-        systemPrompt += '\n\n' + styleInstructions[writingStyle][language];
+      if (writingStyles && writingStyles.length > 0) {
+        systemPrompt += '\n\n' + (language === 'es' ? 'COMBINA ESTOS ESTILOS:' : 'COMBINE THESE STYLES:') + '\n';
+        writingStyles.forEach((style, index) => {
+          if (styleInstructions[style]) {
+            systemPrompt += `\n${index + 1}. ${styleInstructions[style][language]}`;
+          }
+        });
+        if (writingStyles.length > 1) {
+          systemPrompt += '\n\n' + (language === 'es'
+            ? '⚠️ IMPORTANTE: Integra todos estos estilos de forma natural y coherente.'
+            : '⚠️ IMPORTANT: Integrate all these styles naturally and coherently.');
+        }
       }
 
       const userPrompts = {
