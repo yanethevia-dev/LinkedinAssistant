@@ -14,17 +14,19 @@ export interface UserSettings {
     claude: string | null;
     openai: string | null;
     gemini: string | null;
+    groq: string | null;
   };
-  defaultProvider: 'claude' | 'openai' | 'gemini';
+  defaultProvider: 'claude' | 'openai' | 'gemini' | 'groq';
   providerByFeature: {
-    posts: 'default' | 'claude' | 'openai' | 'gemini';
-    comments: 'default' | 'claude' | 'openai' | 'gemini';
-    cv: 'default' | 'claude' | 'openai' | 'gemini';
+    posts: 'default' | 'claude' | 'openai' | 'gemini' | 'groq';
+    comments: 'default' | 'claude' | 'openai' | 'gemini' | 'groq';
+    cv: 'default' | 'claude' | 'openai' | 'gemini' | 'groq';
   };
   models: {
     claude: string;
     openai: string;
     gemini: string;
+    groq: string;
   };
 
   // Style Configuration
@@ -55,6 +57,38 @@ export interface MessageResponse {
   success: boolean;
   data?: any;
   error?: string;
+}
+
+// ============================================================================
+// AI Provider
+// ============================================================================
+
+export type AIProvider = 'claude' | 'openai' | 'gemini' | 'groq';
+
+export interface AIRequest {
+  provider: AIProvider;
+  model?: string;
+  systemPrompt: string;
+  userPrompt: string;
+  temperature?: number;
+  maxTokens?: number;
+}
+
+export interface AIResponse {
+  content: string;
+  provider: AIProvider;
+  model: string;
+  usage?: {
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+  };
+}
+
+export interface AIError {
+  code: string;
+  message: string;
+  details?: any;
 }
 
 // ============================================================================

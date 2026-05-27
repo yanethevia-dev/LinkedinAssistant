@@ -12,9 +12,10 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   apiKeys: {
     claude: null,
     openai: null,
-    gemini: null
+    gemini: null,
+    groq: null
   },
-  defaultProvider: 'claude',
+  defaultProvider: 'groq',
   providerByFeature: {
     posts: 'default',
     comments: 'default',
@@ -23,7 +24,8 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   models: {
     claude: 'claude-3-5-sonnet-20241022',
     openai: 'gpt-4-turbo',
-    gemini: 'gemini-pro'
+    gemini: 'gemini-pro',
+    groq: 'llama-3.1-8b-instant'
   },
 
   // Style

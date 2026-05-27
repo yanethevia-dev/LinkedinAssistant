@@ -24,7 +24,7 @@
       "matches": ["https://*.linkedin.com/*"],
       "js": ["content/linkedin-content.js"],
       "css": ["content/linkedin-styles.css"],
-      "run_at": "document_idle"
+      "run_at": "document_end"
     }
   ],
   "permissions": [

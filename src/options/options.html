@@ -109,12 +109,46 @@
         </div>
       </div>
 
+      <div class="provider-card" id="groq-card">
+        <div class="provider-header">
+          <h3>Groq ⚡</h3>
+          <span class="status-badge" id="groq-status">Not Configured</span>
+        </div>
+        <p class="provider-description">Ultra-fast inference, 100% free (30 req/min, 14.4K/day)</p>
+
+        <div class="form-group">
+          <label for="groq-api-key">API Key</label>
+          <div class="input-with-button">
+            <input type="password" id="groq-api-key" placeholder="gsk_..." />
+            <button class="btn-icon" id="groq-show" title="Show/Hide">👁️</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="groq-model">Model</label>
+          <select id="groq-model">
+            <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant (Verified ✓)</option>
+            <option value="llama3-groq-70b-8192-tool-use-preview">Llama 3 Groq 70B</option>
+            <option value="llama3-groq-8b-8192-tool-use-preview">Llama 3 Groq 8B</option>
+            <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+            <option value="gemma2-9b-it">Gemma 2 9B</option>
+          </select>
+          <p class="field-help">Note: If a model fails, use "llama-3.1-8b-instant" (verified working)</p>
+        </div>
+
+        <div class="button-group">
+          <button class="btn-secondary" id="groq-test">Test Connection</button>
+          <a href="https://console.groq.com/keys" target="_blank" class="btn-link">Get API Key →</a>
+        </div>
+      </div>
+
       <div class="form-group">
         <label for="default-provider">Default Provider</label>
         <select id="default-provider">
           <option value="claude">Claude</option>
           <option value="openai">OpenAI</option>
           <option value="gemini">Gemini</option>
+          <option value="groq">Groq ⚡ (Free)</option>
         </select>
         <p class="field-help">Used when no specific provider is selected</p>
       </div>

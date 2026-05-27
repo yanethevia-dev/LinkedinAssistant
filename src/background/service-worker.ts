@@ -1,8 +1,9 @@
 // Background Service Worker
 
 import { MessageTypes, DEBUG } from '../shared/constants';
-import type { Message, MessageResponse, UserSettings } from '../shared/types';
+import type { Message, MessageResponse, UserSettings, AIProvider } from '../shared/types';
 import { storageService } from './storage-service';
+import { aiService } from './ai-service';
 
 console.log('[LinkedIn Assistant] Service worker initialized');
 
@@ -44,6 +45,14 @@ chrome.runtime.onMessage.addListener(
         handleUpdateSettings(message.payload, sendResponse);
         return true; // Async response
 
+      case MessageTypes.TEST_AI_CONNECTION:
+        handleTestAIConnection(message.payload, sendResponse);
+        return true; // Async response
+
+      case MessageTypes.GENERATE_CONTENT:
+        handleGenerateContent(message.payload, sendResponse);
+        return true; // Async response
+
       default:
         sendResponse({ success: false, error: 'Unknown message type' });
     }
@@ -71,6 +80,82 @@ async function handleUpdateSettings(
   } catch (error) {
     console.error('[Service Worker] Error updating settings:', error);
     sendResponse({ success: false, error: 'Failed to update settings' });
+  }
+}
+
+async function handleTestAIConnection(
+  payload: { provider: AIProvider; apiKey: string; model: string },
+  sendResponse: (response: MessageResponse) => void
+) {
+  try {
+    console.log('[Service Worker] Testing AI connection:', payload.provider);
+    const result = await aiService.testConnection(
+      payload.provider,
+      payload.apiKey,
+      payload.model
+    );
+    console.log('[Service Worker] Test successful:', payload.provider);
+    sendResponse({ success: true, data: { connected: result } });
+  } catch (error: any) {
+    console.error('[Service Worker] Test failed:', error);
+    sendResponse({
+      success: false,
+      error: error.message || 'Connection test failed',
+      data: error
+    });
+  }
+}
+
+async function handleGenerateContent(
+  payload: any,
+  sendResponse: (response: MessageResponse) => void
+) {
+  try {
+    console.log('[Service Worker] Generating content...');
+
+    // Get settings to determine provider and API key
+    const settings = await storageService.getSettings();
+
+    if (!settings) {
+      throw new Error('Could not load settings');
+    }
+
+    const provider = settings.defaultProvider;
+    if (!provider) {
+      throw new Error('No AI provider configured. Please configure in settings.');
+    }
+
+    const apiKey = settings.apiKeys[provider];
+    if (!apiKey) {
+      throw new Error(`No API key for ${provider}. Please add in settings.`);
+    }
+
+    const model = settings.models[provider];
+    if (!model) {
+      throw new Error(`No model configured for ${provider}`);
+    }
+
+    // Build AI request with provider and model from settings
+    const aiRequest = {
+      provider,
+      model,
+      systemPrompt: payload.systemPrompt,
+      userPrompt: payload.userPrompt,
+      temperature: payload.temperature ?? 0.7,
+      maxTokens: payload.maxTokens ?? 2048
+    };
+
+    console.log('[Service Worker] Using provider:', aiRequest.provider, 'model:', aiRequest.model);
+
+    const response = await aiService.generateContent(aiRequest, apiKey);
+    console.log('[Service Worker] Content generated successfully');
+    sendResponse({ success: true, data: response });
+  } catch (error: any) {
+    console.error('[Service Worker] Generation failed:', error);
+    sendResponse({
+      success: false,
+      error: error.message || 'Content generation failed'
+    });
   }
 }
 
