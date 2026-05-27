@@ -706,98 +706,177 @@ function extractProfileData(detailed = false) {
       console.log('[Content Script] ⚠️ About content not found');
     }
 
-    // Experience - Find by section title
-    console.log('[Content Script] Looking for Experience section...');
+    // Experience - NEW approach: Find by date patterns
+    console.log('[Content Script] Looking for Experience items...');
 
-    const experienceTitle = allElements.find(el => {
-      const text = el.textContent?.trim();
-      return text === 'Experiencia' || text === 'Experience';
-    });
+    // LinkedIn's new structure: experiences are in DIVs with dates
+    // Pattern: DIV with 2-3 children, containing text with years (20XX)
+    const mainContent = document.querySelector('main');
 
-    if (experienceTitle) {
-      console.log('[Content Script] Found Experience title');
+    if (mainContent) {
+      const allDivs = Array.from(mainContent.querySelectorAll('div'));
 
-      // Find the container with list items
-      let container = experienceTitle.parentElement;
-      let searchDepth = 0;
+      // Filter DIVs that look like experience cards
+      const experienceCards = allDivs.filter(div => {
+        const text = div.textContent?.trim() || '';
+        const childCount = div.children.length;
 
-      while (container && searchDepth < 5) {
-        const listItems = container.querySelectorAll('ul li, ol li, li');
-        if (listItems.length > 0) {
-          data.experienceCount = listItems.length;
-          console.log('[Content Script] Found', listItems.length, 'experience items');
+        // Experience card characteristics:
+        // - Has 2-3 children (usually: title+company, dates, maybe description)
+        // - Contains date pattern (year in format 20XX)
+        // - Length is reasonable (50-500 chars for summary)
+        // - Not too nested (direct experience card, not parent container)
+        return childCount >= 2 &&
+               childCount <= 4 &&
+               /20\d{2}/.test(text) &&
+               text.length > 30 &&
+               text.length < 600;
+      });
 
-          if (detailed) {
-            Array.from(listItems).forEach((item) => {
-              // Try to extract job title, company, duration
-              const allText = item.textContent?.trim() || '';
+      // Remove duplicates (parent and child both matching)
+      const uniqueExperiences = experienceCards.filter(card => {
+        // Keep only if no ancestor in the list
+        return !experienceCards.some(other =>
+          other !== card && other.contains(card)
+        );
+      });
 
-              // For now, just store the raw text
-              // TODO: Parse structured data (title, company, dates)
-              if (allText.length > 10) {
-                data.experiences.push({
-                  title: allText.substring(0, 100), // First 100 chars as title
-                  company: '',
-                  duration: '',
-                  description: allText
-                });
+      data.experienceCount = uniqueExperiences.length;
+      console.log('[Content Script] Found', uniqueExperiences.length, 'experience items');
+
+      if (detailed) {
+        uniqueExperiences.forEach((card) => {
+          const text = card.textContent?.trim() || '';
+          const lines = card.innerText?.split('\n').map(l => l.trim()).filter(l => l);
+
+          if (lines && lines.length >= 2) {
+            // First line usually: "TitleCompany" (concatenated)
+            // Second line: dates
+            const firstLine = lines[0] || '';
+            const secondLine = lines[1] || '';
+
+            // Try to parse title and company from first line
+            // Look for common separators or company keywords
+            let title = firstLine;
+            let company = '';
+            let duration = secondLine;
+
+            // Try to split by common company indicators
+            const companyKeywords = ['Expedia', 'TALENTOMOBILE', 'Telynet', 'Bibey', 'Universidad'];
+            for (const keyword of companyKeywords) {
+              if (firstLine.includes(keyword)) {
+                const parts = firstLine.split(keyword);
+                title = parts[0].trim();
+                company = keyword + (parts[1] || '').trim();
+                break;
               }
+            }
+
+            // If still not split, try to find where title ends and company begins
+            // Usually title ends before "Group", "S.L.", "Inc", etc.
+            if (!company) {
+              const match = firstLine.match(/^(.+?)((?:Grupo|Group|Inc|Ltd|S\.L\.|S\.A\.|Corp).*)$/i);
+              if (match) {
+                title = match[1].trim();
+                company = match[2].trim();
+              }
+            }
+
+            data.experiences.push({
+              title: title || firstLine.substring(0, 100),
+              company: company,
+              duration: duration,
+              description: lines.slice(2).join(' ') || ''
+            });
+          } else {
+            // Fallback: just store the full text
+            data.experiences.push({
+              title: text.substring(0, 100),
+              company: '',
+              duration: '',
+              description: text
             });
           }
-          break;
-        }
+        });
 
-        container = container.parentElement;
-        searchDepth++;
+        console.log('[Content Script] Extracted', data.experiences.length, 'detailed experiences');
       }
     } else {
-      console.log('[Content Script] ⚠️ Experience title not found');
+      console.log('[Content Script] ⚠️ Main content not found');
     }
 
-    // Education - Find by section title
-    console.log('[Content Script] Looking for Education section...');
+    // Education - Same approach as Experience
+    console.log('[Content Script] Looking for Education items...');
 
-    const educationTitle = allElements.find(el => {
-      const text = el.textContent?.trim();
-      return text === 'Educación' || text === 'Education' || text === 'Formación';
-    });
+    if (mainContent) {
+      const allDivs = Array.from(mainContent.querySelectorAll('div'));
 
-    if (educationTitle) {
-      console.log('[Content Script] Found Education title');
+      // Filter DIVs that look like education cards
+      // Education typically has years (20XX or 19XX) and institution keywords
+      const educationKeywords = ['universidad', 'university', 'college', 'instituto',
+                                 'escuela', 'school', 'polytechnic', 'académica'];
 
-      // Find the container with list items
-      let container = educationTitle.parentElement;
-      let searchDepth = 0;
+      const educationCards = allDivs.filter(div => {
+        const text = div.textContent?.trim().toLowerCase() || '';
+        const childCount = div.children.length;
 
-      while (container && searchDepth < 5) {
-        const listItems = container.querySelectorAll('ul li, ol li, li');
-        if (listItems.length > 0) {
-          data.educationCount = listItems.length;
-          console.log('[Content Script] Found', listItems.length, 'education items');
+        // Education card characteristics:
+        // - Has 2-3 children
+        // - Contains year pattern
+        // - Contains education keyword
+        // - Reasonable length
+        const hasYear = /(?:19|20)\d{2}/.test(text);
+        const hasEduKeyword = educationKeywords.some(keyword => text.includes(keyword));
 
-          if (detailed) {
-            Array.from(listItems).forEach((item) => {
-              const allText = item.textContent?.trim() || '';
+        return childCount >= 2 &&
+               childCount <= 4 &&
+               hasYear &&
+               hasEduKeyword &&
+               text.length > 20 &&
+               text.length < 500;
+      });
 
-              // For now, just store the raw text
-              // TODO: Parse structured data (degree, institution, year)
-              if (allText.length > 10) {
-                data.education.push({
-                  degree: allText.substring(0, 100),
-                  institution: '',
-                  year: allText
-                });
-              }
+      // Remove duplicates
+      const uniqueEducation = educationCards.filter(card => {
+        return !educationCards.some(other =>
+          other !== card && other.contains(card)
+        );
+      });
+
+      data.educationCount = uniqueEducation.length;
+      console.log('[Content Script] Found', uniqueEducation.length, 'education items');
+
+      if (detailed) {
+        uniqueEducation.forEach((card) => {
+          const text = card.textContent?.trim() || '';
+          const lines = card.innerText?.split('\n').map(l => l.trim()).filter(l => l);
+
+          if (lines && lines.length >= 2) {
+            // First line: usually institution name
+            // Second line: degree or year
+            const institution = lines[0] || '';
+            const degreeOrYear = lines[1] || '';
+
+            // Try to find year in any line
+            const yearMatch = text.match(/(?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}|(?:19|20)\d{2}/);
+            const year = yearMatch ? yearMatch[0] : '';
+
+            data.education.push({
+              degree: degreeOrYear.includes('20') ? '' : degreeOrYear, // If has year, it's not the degree
+              institution: institution,
+              year: year || degreeOrYear
+            });
+          } else {
+            data.education.push({
+              degree: text.substring(0, 100),
+              institution: '',
+              year: ''
             });
           }
-          break;
-        }
+        });
 
-        container = container.parentElement;
-        searchDepth++;
+        console.log('[Content Script] Extracted', data.education.length, 'detailed education');
       }
-    } else {
-      console.log('[Content Script] ⚠️ Education title not found');
     }
 
     console.log('[Content Script] Profile data extracted:', {
