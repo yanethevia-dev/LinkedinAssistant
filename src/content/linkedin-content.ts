@@ -4,6 +4,7 @@ import { MessageTypes } from '../shared/constants';
 import { domObserver, type ObservedElement } from './dom-observer';
 import { uiInjector } from './ui-injector';
 import { modal } from './modal';
+import { aiHelper } from './ai-helper';
 
 console.log('[LinkedIn Assistant] Content script loaded');
 console.log('[LinkedIn Assistant] URL:', window.location.href);
@@ -215,25 +216,36 @@ function handleGeneratePostWithAI() {
     onPrimary: async (topic: string) => {
       console.log('[Content Script] Generating post for topic:', topic);
 
-      // TODO: Call AI service to generate post
-      // For now, simulate
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      try {
+        modal.close();
 
-      const generatedPost = `🚀 Post generado sobre: "${topic}"\n\n[Aquí iría el post generado por la IA]\n\n(Funcionalidad de IA próximamente)`;
+        // Show loading toast
+        showSuccessToast('⏳ Generando post con IA...');
 
-      // Open LinkedIn composer
-      const startPostBtn = document.querySelector('[aria-label*="Start a post"], [aria-label*="Crear publicación"]') as HTMLElement;
+        // Call AI service to generate post
+        const generatedPost = await aiHelper.generatePost(topic);
+        console.log('[Content Script] Post generated successfully');
 
-      if (startPostBtn) {
-        startPostBtn.click();
-        console.log('[Content Script] LinkedIn composer opened');
+        // Open LinkedIn composer
+        const startPostBtn = document.querySelector('[aria-label*="Start a post"], [aria-label*="Crear publicación"]') as HTMLElement;
 
-        // Wait for composer to open and insert text
-        setTimeout(() => {
-          insertTextIntoComposer(generatedPost);
-        }, 1000);
-      } else {
-        alert(`Post generado:\n\n${generatedPost}\n\n(Copia manualmente al compositor de LinkedIn)`);
+        if (startPostBtn) {
+          startPostBtn.click();
+          console.log('[Content Script] LinkedIn composer opened');
+
+          // Wait for composer to open and insert text
+          setTimeout(() => {
+            const success = insertTextIntoComposer(generatedPost);
+            if (!success) {
+              alert(`✅ Post generado:\n\n${generatedPost}\n\n❌ No se pudo insertar automáticamente. Cópialo manualmente.`);
+            }
+          }, 1000);
+        } else {
+          alert(`✅ Post generado:\n\n${generatedPost}\n\n(Copia manualmente al compositor de LinkedIn)`);
+        }
+      } catch (error: any) {
+        console.error('[Content Script] Error generating post:', error);
+        alert(`❌ Error al generar post:\n\n${error.message}\n\nVerifica tu configuración de IA en Settings.`);
       }
     },
     onSecondary: () => {
@@ -386,12 +398,27 @@ function handleImprovePost(composerElement: HTMLElement) {
     onPrimary: async (text: string) => {
       console.log('[Content Script] Improving post:', text.substring(0, 50) + '...');
 
-      // TODO: Issue #8 - Call AI service to improve post
-      // For now, simulate with timeout
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      try {
+        modal.close();
 
-      // TODO: Replace text in composer with improved version
-      alert(`🎉 Post improved!\n\nOriginal: ${text.substring(0, 50)}...\n\n(Actual AI improvement coming in Issue #8)`);
+        // Show loading toast
+        showSuccessToast('⏳ Mejorando post con IA...');
+
+        // Call AI service to improve post
+        const improvedPost = await aiHelper.improvePost(text);
+        console.log('[Content Script] Post improved successfully');
+
+        // Replace text in composer with improved version
+        textEditor.textContent = improvedPost;
+        const inputEvent = new Event('input', { bubbles: true });
+        textEditor.dispatchEvent(inputEvent);
+
+        // Show success notification
+        showSuccessToast('✅ Post mejorado con IA');
+      } catch (error: any) {
+        console.error('[Content Script] Error improving post:', error);
+        alert(`❌ Error al mejorar post:\n\n${error.message}\n\nVerifica tu configuración de IA en Settings.`);
+      }
     },
     onSecondary: () => {
       console.log('[Content Script] Improve cancelled');
@@ -403,15 +430,17 @@ function handleImprovePost(composerElement: HTMLElement) {
 }
 
 // Helper: Extract profile data from LinkedIn
-function extractProfileData() {
-  console.log('[Content Script] Extracting profile data...');
+function extractProfileData(detailed = false) {
+  console.log('[Content Script] Extracting profile data (detailed:', detailed, ')...');
 
   const data: any = {
     name: '',
     headline: '',
     about: '',
     experienceCount: 0,
-    educationCount: 0
+    educationCount: 0,
+    experiences: [],
+    education: []
   };
 
   try {
@@ -428,22 +457,92 @@ function extractProfileData() {
     const aboutText = aboutSection?.querySelector('.inline-show-more-text, .display-flex span[aria-hidden="true"]');
     data.about = aboutText?.textContent?.trim() || '';
 
-    // Experience count
+    // Experience
     const experienceSection = document.querySelector('#experience')?.parentElement;
     const experienceItems = experienceSection?.querySelectorAll('li.artdeco-list__item, li[class*="profile-section-card"]');
     data.experienceCount = experienceItems?.length || 0;
 
-    // Education count
+    if (detailed && experienceItems) {
+      experienceItems.forEach((item) => {
+        const titleEl = item.querySelector('[class*="profile-section-card__title"]');
+        const companyEl = item.querySelector('[class*="profile-section-card__subtitle"]');
+        const durationEl = item.querySelector('[class*="date-range"]');
+        const descriptionEl = item.querySelector('[class*="show-more-less"]');
+
+        if (titleEl) {
+          data.experiences.push({
+            title: titleEl.textContent?.trim() || '',
+            company: companyEl?.textContent?.trim() || '',
+            duration: durationEl?.textContent?.trim() || '',
+            description: descriptionEl?.textContent?.trim() || ''
+          });
+        }
+      });
+    }
+
+    // Education
     const educationSection = document.querySelector('#education')?.parentElement;
     const educationItems = educationSection?.querySelectorAll('li.artdeco-list__item, li[class*="profile-section-card"]');
     data.educationCount = educationItems?.length || 0;
 
-    console.log('[Content Script] Profile data extracted:', data);
+    if (detailed && educationItems) {
+      educationItems.forEach((item) => {
+        const degreeEl = item.querySelector('[class*="profile-section-card__title"]');
+        const institutionEl = item.querySelector('[class*="profile-section-card__subtitle"]');
+        const yearEl = item.querySelector('[class*="date-range"]');
+
+        if (degreeEl) {
+          data.education.push({
+            degree: degreeEl.textContent?.trim() || '',
+            institution: institutionEl?.textContent?.trim() || '',
+            year: yearEl?.textContent?.trim() || ''
+          });
+        }
+      });
+    }
+
+    console.log('[Content Script] Profile data extracted:', {
+      name: data.name,
+      experienceCount: data.experienceCount,
+      educationCount: data.educationCount,
+      detailedExperiences: data.experiences.length,
+      detailedEducation: data.education.length
+    });
   } catch (error) {
     console.error('[Content Script] Error extracting profile data:', error);
   }
 
   return data;
+}
+
+// Helper: Show success toast notification
+function showSuccessToast(message: string) {
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 100px;
+    right: 30px;
+    background: #0a66c2;
+    color: white;
+    padding: 16px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: slideInFromRight 0.3s ease;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  `;
+  toast.textContent = message;
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.animation = 'slideOutToRight 0.3s ease';
+    setTimeout(() => {
+      toast.remove();
+    }, 300);
+  }, 3000);
 }
 
 // Helper: Insert text into LinkedIn composer

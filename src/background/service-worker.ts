@@ -111,21 +111,45 @@ async function handleGenerateContent(
   sendResponse: (response: MessageResponse) => void
 ) {
   try {
-    console.log('[Service Worker] Generating content with:', payload.request.provider);
+    console.log('[Service Worker] Generating content...');
 
-    if (!payload.request || !payload.apiKey) {
-      throw new Error('Missing request or API key');
+    // Get settings to determine provider and API key
+    const settings = await storageService.getSettings();
+
+    const selectedProvider = settings.selectedProvider;
+    if (!selectedProvider) {
+      throw new Error('No AI provider configured. Please configure in settings.');
     }
 
-    const response = await aiService.generateContent(payload.request, payload.apiKey);
+    const apiKeys = settings.apiKeys || {};
+    const apiKey = apiKeys[selectedProvider];
+    if (!apiKey) {
+      throw new Error(`No API key for ${selectedProvider}. Please add in settings.`);
+    }
+
+    const models = settings.models || {};
+    const model = models[selectedProvider] || 'default';
+
+    // Build AI request with provider and model from settings
+    const aiRequest = {
+      provider: selectedProvider,
+      model: model,
+      systemPrompt: payload.systemPrompt,
+      userPrompt: payload.userPrompt,
+      temperature: payload.temperature ?? 0.7,
+      maxTokens: payload.maxTokens ?? 2048
+    };
+
+    console.log('[Service Worker] Using provider:', aiRequest.provider, 'model:', aiRequest.model);
+
+    const response = await aiService.generateContent(aiRequest, apiKey);
     console.log('[Service Worker] Content generated successfully');
     sendResponse({ success: true, data: response });
   } catch (error: any) {
     console.error('[Service Worker] Generation failed:', error);
     sendResponse({
       success: false,
-      error: error.message || 'Content generation failed',
-      data: error
+      error: error.message || 'Content generation failed'
     });
   }
 }

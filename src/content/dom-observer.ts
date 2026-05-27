@@ -138,12 +138,14 @@ export class LinkedInDOMObserver {
    */
   private detectPostComposer() {
     console.log('[DOMObserver] === Scanning for post composer ===');
+    console.log('[DOMObserver] Current URL:', window.location.href);
 
     // Check for Shadow DOM first (LinkedIn 2026)
     const shadowHost = document.querySelector('#interop-outlet');
+    console.log('[DOMObserver] Shadow host found:', !!shadowHost);
 
     if (shadowHost && (shadowHost as any).shadowRoot) {
-      console.log('[DOMObserver] Shadow DOM found! Searching inside...');
+      console.log('[DOMObserver] ✓ Shadow DOM found! Searching inside...');
       this.scanShadowDOM((shadowHost as any).shadowRoot);
       return;
     }
