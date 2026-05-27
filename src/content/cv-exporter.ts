@@ -78,61 +78,87 @@ export function downloadAsPDF(cvText: string, filename: string = 'CV') {
       <style>
         @page {
           size: A4;
-          margin: 2cm;
+          margin: 1.5cm 2cm;
+        }
+        @media print {
+          body {
+            margin: 0;
+            padding: 0;
+          }
         }
         body {
-          font-family: 'Segoe UI', Arial, sans-serif;
-          font-size: 11pt;
-          line-height: 1.6;
+          font-family: 'Segoe UI', 'Calibri', Arial, sans-serif;
+          font-size: 10.5pt;
+          line-height: 1.5;
           color: #333;
-          max-width: 21cm;
-          margin: 0 auto;
+          max-width: 100%;
+          margin: 0;
+          padding: 0;
         }
         h1 {
-          font-size: 24pt;
+          font-size: 20pt;
           font-weight: bold;
-          margin-bottom: 8pt;
+          margin: 0 0 6pt 0;
           color: #2c3e50;
           border-bottom: 2px solid #3498db;
-          padding-bottom: 8pt;
+          padding-bottom: 6pt;
+          page-break-after: avoid;
         }
         h2 {
-          font-size: 14pt;
+          font-size: 13pt;
           font-weight: bold;
-          margin-top: 16pt;
-          margin-bottom: 8pt;
+          margin: 14pt 0 6pt 0;
           color: #34495e;
           text-transform: uppercase;
-          letter-spacing: 1pt;
+          letter-spacing: 0.5pt;
+          page-break-after: avoid;
+        }
+        h3 {
+          font-size: 11pt;
+          font-weight: bold;
+          margin: 8pt 0 4pt 0;
+          color: #555;
+          page-break-after: avoid;
         }
         p {
-          margin: 8pt 0;
+          margin: 4pt 0;
+          orphans: 3;
+          widows: 3;
         }
         ul {
-          margin: 8pt 0;
-          padding-left: 20pt;
+          margin: 6pt 0;
+          padding-left: 18pt;
         }
         li {
-          margin: 6pt 0;
+          margin: 3pt 0;
         }
         .section {
-          page-break-inside: avoid;
+          margin-bottom: 10pt;
         }
         .experience-item, .education-item {
-          margin: 12pt 0;
-          page-break-inside: avoid;
+          margin: 8pt 0 12pt 0;
         }
         .job-title {
           font-weight: bold;
-          font-size: 12pt;
+          font-size: 11pt;
+          color: #2c3e50;
         }
         .company {
           font-style: italic;
           color: #555;
+          font-size: 10pt;
         }
         .dates {
           color: #777;
-          font-size: 10pt;
+          font-size: 9.5pt;
+        }
+        /* Prevent orphaned section headers */
+        h1, h2, h3 {
+          break-after: avoid-page;
+        }
+        /* Better paragraph breaks */
+        p + h2 {
+          margin-top: 16pt;
         }
       </style>
     </head>
@@ -221,58 +247,90 @@ function textToHtmlForPDF(text: string): string {
   const lines = text.split('\n');
   let html = '';
   let inList = false;
-  let isFirstSection = true;
+  let isFirstLine = true;
+  let sectionOpen = false;
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const trimmed = line.trim();
 
+    // Skip multiple consecutive empty lines
     if (!trimmed) {
       if (inList) {
         html += '</ul>';
         inList = false;
       }
+      if (sectionOpen) {
+        html += '</div>';
+        sectionOpen = false;
+      }
       continue;
     }
 
-    // Detect name (first line, usually)
-    if (isFirstSection && lines.indexOf(line) === 0) {
+    // Detect name (first non-empty line)
+    if (isFirstLine) {
       html += `<h1>${escapeHtml(trimmed)}</h1>`;
-      isFirstSection = false;
+      isFirstLine = false;
       continue;
     }
 
-    // Detect sections (ALL CAPS or ends with :)
-    if (/^[A-ZÁÉÍÓÚÑ\s]{3,}$/.test(trimmed) || trimmed.endsWith(':')) {
+    // Detect sections (ALL CAPS with 3+ letters, or ends with :, or starts with ===)
+    const isAllCaps = /^[A-ZÁÉÍÓÚÑ\s]{3,}$/.test(trimmed);
+    const endsWithColon = trimmed.endsWith(':') && trimmed.length > 3;
+    const isDivider = trimmed.startsWith('===') || trimmed.startsWith('---');
+
+    if (isAllCaps || endsWithColon || isDivider) {
       if (inList) {
         html += '</ul>';
         inList = false;
       }
-      const sectionTitle = trimmed.replace(':', '');
+      if (sectionOpen) {
+        html += '</div>';
+      }
+
+      if (isDivider) {
+        continue; // Skip divider lines
+      }
+
+      const sectionTitle = trimmed.replace(':', '').trim();
       html += `<div class="section"><h2>${escapeHtml(sectionTitle)}</h2>`;
+      sectionOpen = true;
       continue;
     }
 
-    // Detect list items (starts with • or -)
-    if (trimmed.startsWith('•') || trimmed.startsWith('-')) {
+    // Detect list items (starts with •, -, or ✓)
+    if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('✓') || trimmed.startsWith('✅')) {
       if (!inList) {
         html += '<ul>';
         inList = true;
       }
-      const itemText = trimmed.substring(1).trim();
+      let itemText = trimmed.substring(1).trim();
+      // Handle ✅ (2 chars)
+      if (trimmed.startsWith('✅')) {
+        itemText = trimmed.substring(2).trim();
+      }
       html += `<li>${escapeHtml(itemText)}</li>`;
       continue;
     }
 
     // Regular paragraph
     if (inList) {
-      html += '</ul></div>';
+      html += '</ul>';
       inList = false;
     }
-    html += `<p>${escapeHtml(trimmed)}</p>`;
+
+    // Don't add excessive spacing
+    if (trimmed.length > 0) {
+      html += `<p>${escapeHtml(trimmed)}</p>`;
+    }
   }
 
+  // Close any open tags
   if (inList) {
-    html += '</ul></div>';
+    html += '</ul>';
+  }
+  if (sectionOpen) {
+    html += '</div>';
   }
 
   return html;
