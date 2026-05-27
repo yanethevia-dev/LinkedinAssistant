@@ -258,7 +258,7 @@ function handleGeneratePostWithAI() {
 }
 
 // Handle Generate CV (floating button)
-function handleGenerateCV() {
+async function handleGenerateCV() {
   console.log('[Content Script] Generate CV clicked');
   console.log('[Content Script] Current URL:', window.location.href);
   console.log('[Content Script] Pathname:', window.location.pathname);
@@ -272,6 +272,13 @@ function handleGenerateCV() {
     return;
   }
 
+  // Show loading toast
+  showSuccessToast('⏳ Preparando perfil...');
+
+  // Auto-scroll to load all sections
+  console.log('[Content Script] Auto-scrolling to load experience and education...');
+  await autoScrollProfile();
+
   console.log('[Content Script] Extracting profile data...');
 
   // Extract profile data with details
@@ -279,10 +286,25 @@ function handleGenerateCV() {
 
   console.log('[Content Script] Extracted name:', profileData.name);
   console.log('[Content Script] Extracted headline:', profileData.headline);
+  console.log('[Content Script] Experience count:', profileData.experienceCount);
+  console.log('[Content Script] Education count:', profileData.educationCount);
 
   if (!profileData.name) {
     alert('No se pudo extraer la información del perfil.\n\nDebug info:\n- URL: ' + window.location.pathname + '\n- Nombre encontrado: ' + (profileData.name || 'NO') + '\n\nPor favor:\n1. Asegúrate de estar en TU perfil\n2. Espera a que la página cargue completamente\n3. Intenta hacer scroll hacia abajo\n4. Abre la consola del navegador (F12) para ver más detalles');
     return;
+  }
+
+  // Check if experience data was found
+  if (profileData.experienceCount === 0) {
+    const retry = confirm('⚠️ No se encontraron experiencias laborales\n\nEsto puede suceder si LinkedIn no ha cargado esas secciones todavía.\n\n¿Qué hacer?\n1. Haz scroll MANUALMENTE hasta el final del perfil\n2. Asegúrate de VER tus trabajos en pantalla\n3. Espera 2-3 segundos\n4. Haz click en "Generar CV" de nuevo\n\n¿Quieres intentarlo ahora?\n\n(Click OK para volver e intentar, o Cancelar para generar CV sin experiencias)');
+
+    if (retry) {
+      alert('👇 Haz scroll hacia abajo para ver tus experiencias\n\nCuando las veas en pantalla, espera 2-3 segundos y vuelve a hacer click en "📄 Generar mi CV"');
+      return;
+    } else {
+      // User wants to continue without experiences
+      console.log('[Content Script] User chose to continue without experiences');
+    }
   }
 
   // Show confirmation and generate CV
@@ -350,7 +372,7 @@ function handleGenerateCV() {
 }
 
 // Handle Improve Profile (floating button)
-function handleImproveProfile() {
+async function handleImproveProfile() {
   console.log('[Content Script] Improve Profile clicked');
   console.log('[Content Script] Current URL:', window.location.href);
   console.log('[Content Script] Pathname:', window.location.pathname);
@@ -363,6 +385,10 @@ function handleImproveProfile() {
     alert('🔧 Mejorar mi Perfil\n\nPor favor, ve a tu perfil de LinkedIn primero.\n\nURL actual: ' + window.location.pathname + '\n\nDebes estar en una URL como: /in/tu-nombre/');
     return;
   }
+
+  // Show loading and auto-scroll
+  showSuccessToast('⏳ Preparando perfil...');
+  await autoScrollProfile();
 
   console.log('[Content Script] Extracting profile data for improvement...');
 
@@ -756,29 +782,70 @@ function extractProfileData(detailed = false) {
             const secondLine = lines[1] || '';
 
             // Try to parse title and company from first line
-            // Look for common separators or company keywords
+            // LinkedIn concatenates them: "TitleCompany"
             let title = firstLine;
             let company = '';
             let duration = secondLine;
 
-            // Try to split by common company indicators
-            const companyKeywords = ['Expedia', 'TALENTOMOBILE', 'Telynet', 'Bibey', 'Universidad'];
-            for (const keyword of companyKeywords) {
-              if (firstLine.includes(keyword)) {
-                const parts = firstLine.split(keyword);
-                title = parts[0].trim();
-                company = keyword + (parts[1] || '').trim();
-                break;
-              }
-            }
+            // Strategy 1: Look for company suffixes (Group, Inc, Ltd, S.L., etc.)
+            const companySuffixes = [
+              'Group', 'Inc', 'Ltd', 'LLC', 'Corp', 'Corporation',
+              'S\\.L\\.', 'S\\.A\\.', 'S\\.L', 'S\\.A',
+              'GmbH', 'AG', 'Limited', 'Ltda',
+              'Technologies', 'Technology', 'Tech',
+              'Systems', 'Solutions', 'Services',
+              'Consulting', 'Consultancy'
+            ];
 
-            // If still not split, try to find where title ends and company begins
-            // Usually title ends before "Group", "S.L.", "Inc", etc.
-            if (!company) {
-              const match = firstLine.match(/^(.+?)((?:Grupo|Group|Inc|Ltd|S\.L\.|S\.A\.|Corp).*)$/i);
-              if (match) {
-                title = match[1].trim();
-                company = match[2].trim();
+            const suffixRegex = new RegExp(`^(.+?)((?:${companySuffixes.join('|')})(?:\\s|$).*)`, 'i');
+            const suffixMatch = firstLine.match(suffixRegex);
+
+            if (suffixMatch) {
+              title = suffixMatch[1].trim();
+              company = suffixMatch[2].trim();
+            } else {
+              // Strategy 2: Look for job title keywords at the start
+              const jobTitles = [
+                'Senior', 'Junior', 'Lead', 'Chief', 'Head of', 'Director',
+                'Manager', 'Engineer', 'Developer', 'Designer', 'Architect',
+                'Analyst', 'Consultant', 'Specialist', 'Coordinator',
+                'Ingeniero', 'Desarrollador', 'Gerente', 'Director',
+                'Especialista', 'Analista', 'Consultor'
+              ];
+
+              // Find where job title ends
+              let titleEndPos = -1;
+              for (const jobTitle of jobTitles) {
+                const pos = firstLine.toLowerCase().indexOf(jobTitle.toLowerCase());
+                if (pos >= 0) {
+                  // Find the end of this job title phrase
+                  // Usually ends before next capital letter sequence
+                  const afterTitle = firstLine.substring(pos + jobTitle.length);
+                  const capitalMatch = afterTitle.match(/^[\s\w-]*?([A-Z][a-z]+[A-Z]|[A-Z]{2,})/);
+
+                  if (capitalMatch && capitalMatch.index !== undefined) {
+                    titleEndPos = pos + jobTitle.length + capitalMatch.index;
+                    break;
+                  }
+                }
+              }
+
+              if (titleEndPos > 0) {
+                title = firstLine.substring(0, titleEndPos).trim();
+                company = firstLine.substring(titleEndPos).trim();
+              } else {
+                // Strategy 3: If can't parse, use first 60% as title, rest as company
+                const splitPoint = Math.floor(firstLine.length * 0.6);
+                const lastSpace = firstLine.lastIndexOf(' ', splitPoint);
+
+                if (lastSpace > 0) {
+                  title = firstLine.substring(0, lastSpace).trim();
+                  company = firstLine.substring(lastSpace).trim();
+                } else {
+                  // Give up, keep everything as title
+                  title = firstLine;
+                  company = '';
+                }
               }
             }
 
@@ -891,6 +958,36 @@ function extractProfileData(detailed = false) {
   }
 
   return data;
+}
+
+// Helper: Auto-scroll profile to load lazy-loaded sections
+async function autoScrollProfile(): Promise<void> {
+  return new Promise((resolve) => {
+    console.log('[Content Script] Starting auto-scroll...');
+
+    const scrollStep = 300; // pixels per step
+    const scrollDelay = 100; // ms between steps
+    let currentPosition = 0;
+    const maxScroll = document.documentElement.scrollHeight;
+
+    const scrollInterval = setInterval(() => {
+      currentPosition += scrollStep;
+      window.scrollTo({ top: currentPosition, behavior: 'smooth' });
+
+      // Check if reached bottom
+      if (currentPosition >= maxScroll - window.innerHeight) {
+        clearInterval(scrollInterval);
+
+        // Wait a bit at the bottom for content to load
+        setTimeout(() => {
+          console.log('[Content Script] Auto-scroll complete');
+          // Scroll back to top
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          setTimeout(() => resolve(), 500);
+        }, 1500);
+      }
+    }, scrollDelay);
+  });
 }
 
 // Helper: Show success toast notification
