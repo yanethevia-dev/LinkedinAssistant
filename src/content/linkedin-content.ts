@@ -5,6 +5,7 @@ import { domObserver, type ObservedElement } from './dom-observer';
 import { uiInjector } from './ui-injector';
 import { modal } from './modal';
 import { aiHelper } from './ai-helper';
+import { downloadAsTxt, downloadAsWord, downloadAsPDF } from './cv-exporter';
 
 console.log('[LinkedIn Assistant] Content script loaded');
 console.log('[LinkedIn Assistant] URL:', window.location.href);
@@ -329,32 +330,8 @@ async function handleGenerateCV() {
         const cvText = await aiHelper.generateCV(profileData);
         console.log('[Content Script] CV generated successfully');
 
-        // Show CV in a new modal
-        modal.open({
-          title: '📄 Tu CV Generado',
-          description: 'CV generado con IA. Copia el texto o descarga como archivo:',
-          placeholder: '',
-          initialValue: cvText,
-          primaryButton: 'Copiar al Portapapeles',
-          secondaryButton: 'Cerrar',
-          maxLength: 5000,
-          showCharCount: false,
-          onPrimary: async (text: string) => {
-            // Copy to clipboard
-            try {
-              await navigator.clipboard.writeText(text);
-              showSuccessToast('✅ CV copiado al portapapeles');
-            } catch (error) {
-              alert('No se pudo copiar automáticamente. Por favor, selecciona y copia manualmente.');
-            }
-          },
-          onSecondary: () => {
-            console.log('[Content Script] CV modal closed');
-          },
-          onClose: () => {
-            console.log('[Content Script] CV modal closed');
-          }
-        });
+        // Show CV with download options
+        showCVWithDownloadOptions(cvText, profileData.name);
 
         showSuccessToast('✅ CV generado con IA');
       } catch (error: any) {
@@ -958,6 +935,214 @@ function extractProfileData(detailed = false) {
   }
 
   return data;
+}
+
+// Helper: Show CV with download options
+function showCVWithDownloadOptions(cvText: string, userName: string) {
+  // Create custom modal with CV preview and download buttons
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    animation: fadeIn 0.2s ease;
+  `;
+
+  const modalContainer = document.createElement('div');
+  modalContainer.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    animation: slideUp 0.3s ease;
+  `;
+
+  // Header
+  const header = document.createElement('div');
+  header.style.cssText = `
+    padding: 24px;
+    border-bottom: 1px solid #e0e0e0;
+  `;
+  header.innerHTML = `
+    <h2 style="margin: 0; font-size: 24px; font-weight: 600; color: #333;">📄 Tu CV Generado</h2>
+    <p style="margin: 8px 0 0; color: #666; font-size: 14px;">Revisa, copia o descarga en tu formato preferido</p>
+  `;
+
+  // CV Content (scrollable)
+  const content = document.createElement('div');
+  content.style.cssText = `
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    background: #f9f9f9;
+  `;
+
+  const cvPreview = document.createElement('pre');
+  cvPreview.style.cssText = `
+    white-space: pre-wrap;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #333;
+    margin: 0;
+    background: white;
+    padding: 24px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+  `;
+  cvPreview.textContent = cvText;
+  content.appendChild(cvPreview);
+
+  // Footer with buttons
+  const footer = document.createElement('div');
+  footer.style.cssText = `
+    padding: 20px 24px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  `;
+
+  // Download buttons row
+  const downloadRow = document.createElement('div');
+  downloadRow.style.cssText = `
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  `;
+
+  const createButton = (text: string, bgColor: string, icon: string) => {
+    const btn = document.createElement('button');
+    btn.textContent = `${icon} ${text}`;
+    btn.style.cssText = `
+      flex: 1;
+      min-width: 140px;
+      padding: 12px 20px;
+      background: ${bgColor};
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    `;
+    btn.onmouseenter = () => {
+      btn.style.transform = 'translateY(-2px)';
+      btn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    };
+    btn.onmouseleave = () => {
+      btn.style.transform = 'translateY(0)';
+      btn.style.boxShadow = 'none';
+    };
+    return btn;
+  };
+
+  const pdfBtn = createButton('Descargar PDF', '#e74c3c', '📕');
+  const wordBtn = createButton('Descargar Word', '#2980b9', '📘');
+  const txtBtn = createButton('Descargar TXT', '#27ae60', '📗');
+
+  pdfBtn.onclick = () => {
+    downloadAsPDF(cvText, `CV_${userName.replace(/\s+/g, '_')}`);
+    showSuccessToast('📕 Abriendo diálogo de impresión...');
+  };
+
+  wordBtn.onclick = () => {
+    downloadAsWord(cvText, `CV_${userName.replace(/\s+/g, '_')}`);
+    showSuccessToast('📘 CV descargado en formato Word');
+  };
+
+  txtBtn.onclick = () => {
+    downloadAsTxt(cvText, `CV_${userName.replace(/\s+/g, '_')}`);
+    showSuccessToast('📗 CV descargado en formato texto');
+  };
+
+  downloadRow.appendChild(pdfBtn);
+  downloadRow.appendChild(wordBtn);
+  downloadRow.appendChild(txtBtn);
+
+  // Action buttons row
+  const actionRow = document.createElement('div');
+  actionRow.style.cssText = `
+    display: flex;
+    gap: 12px;
+  `;
+
+  const copyBtn = createButton('Copiar al Portapapeles', '#0a66c2', '📋');
+  const closeBtn = createButton('Cerrar', '#666', '✕');
+
+  copyBtn.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(cvText);
+      showSuccessToast('✅ CV copiado al portapapeles');
+    } catch (error) {
+      alert('No se pudo copiar automáticamente. Por favor, selecciona y copia manualmente.');
+    }
+  };
+
+  closeBtn.onclick = () => {
+    overlay.style.animation = 'fadeOut 0.2s ease';
+    setTimeout(() => overlay.remove(), 200);
+  };
+
+  actionRow.appendChild(copyBtn);
+  actionRow.appendChild(closeBtn);
+
+  footer.appendChild(downloadRow);
+  footer.appendChild(actionRow);
+
+  modalContainer.appendChild(header);
+  modalContainer.appendChild(content);
+  modalContainer.appendChild(footer);
+  overlay.appendChild(modalContainer);
+
+  // Close on overlay click
+  overlay.onclick = (e) => {
+    if (e.target === overlay) {
+      closeBtn.click();
+    }
+  };
+
+  // Close on Escape key
+  const handleEscape = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      closeBtn.click();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+
+  // Add animations
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  `;
+  document.head.appendChild(style);
+
+  document.body.appendChild(overlay);
 }
 
 // Helper: Auto-scroll profile to load lazy-loaded sections
