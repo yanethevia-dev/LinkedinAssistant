@@ -99,31 +99,32 @@ export class UIInjector {
   }
 
   /**
-   * Find the best place to inject buttons - SIMPLIFIED
+   * Find the best place to inject buttons - composerElement IS the editor now
    */
   private findPostComposerInjectionPoint(composerElement: HTMLElement): HTMLElement | null {
     console.log('[UIInjector] Finding injection point...');
+    console.log('[UIInjector] Composer element (editor):', composerElement.className.substring(0, 50));
 
-    // Look for the editor inside the dialog (try multiple types)
-    let editor = composerElement.querySelector('.ql-editor') as HTMLElement;
-    if (!editor) {
-      editor = composerElement.querySelector('.tiptap') as HTMLElement; // TipTap (LinkedIn 2026)
-    }
-    if (!editor) {
-      editor = composerElement.querySelector('.ProseMirror') as HTMLElement; // ProseMirror
-    }
-    if (!editor) {
-      editor = composerElement.querySelector('[contenteditable]') as HTMLElement; // ANY contenteditable
+    // The composerElement IS the editor now, find a good parent container
+    let container = composerElement.parentElement;
+    let depth = 0;
+
+    // Go up until we find a substantial container (not just a wrapper div)
+    while (container && depth < 5) {
+      const hasMultipleChildren = container.children.length > 1;
+      const hasReasonableHeight = container.offsetHeight > 100;
+
+      if (hasMultipleChildren || hasReasonableHeight) {
+        console.log('[UIInjector] Found good container at depth', depth, ':', container.className.substring(0, 50));
+        return container;
+      }
+
+      container = container.parentElement;
+      depth++;
     }
 
-    if (editor) {
-      console.log('[UIInjector] Found editor:', editor.className);
-      console.log('[UIInjector] Inserting buttons after editor parent');
-      return editor.parentElement || composerElement;
-    }
-
-    console.log('[UIInjector] No editor found, using dialog itself');
-    return composerElement;
+    console.log('[UIInjector] Using editor parent as fallback');
+    return composerElement.parentElement || composerElement;
   }
 
   /**

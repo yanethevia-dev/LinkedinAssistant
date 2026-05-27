@@ -134,62 +134,67 @@ export class LinkedInDOMObserver {
   }
 
   /**
-   * Detect the main post composer - SIMPLIFIED WITH DEBUGGING
+   * Detect the main post composer - FIND THE EDITOR DIRECTLY
    */
   private detectPostComposer() {
     console.log('[DOMObserver] === Scanning for post composer ===');
 
-    // SIMPLE: Solo buscar el modal/dialog cuando se abre
-    const dialogs = document.querySelectorAll('[role="dialog"]');
+    // LinkedIn doesn't use [role="dialog"] - search for EDITORS directly
+    const selectors = [
+      '.tiptap',                    // TipTap editor (LinkedIn 2026)
+      '.ProseMirror',               // ProseMirror (TipTap base)
+      '.ql-editor',                 // Quill editor (legacy)
+      '[contenteditable]'           // Any contenteditable as fallback
+    ];
 
-    console.log(`[DOMObserver] Found ${dialogs.length} dialogs`);
+    const foundElements = new Set<HTMLElement>();
 
-    if (dialogs.length === 0) {
-      console.log('[DOMObserver] ⚠️ NO DIALOGS FOUND - this is normal if modal is closed');
-      return;
+    for (const selector of selectors) {
+      const elements = document.querySelectorAll(selector);
+      console.log(`[DOMObserver]   Trying "${selector}" → found ${elements.length}`);
+
+      elements.forEach((el) => {
+        const element = el as HTMLElement;
+
+        // Skip if already observed
+        if (this.observedElements.has(element)) {
+          return;
+        }
+
+        // Must be visible
+        if (!this.isVisible(element)) {
+          return;
+        }
+
+        // Must look like a post composer (not a comment or other input)
+        const parent = element.closest('.share-creation-state, .artdeco-modal, .msg-form') ||
+                      element.parentElement?.parentElement; // Give it some leeway
+
+        if (parent) {
+          console.log('[DOMObserver]   ✓ Found visible editor:', element.className.substring(0, 50));
+          foundElements.add(element);
+        }
+      });
     }
 
-    dialogs.forEach((dialog, index) => {
-      const dialogEl = dialog as HTMLElement;
-      console.log(`[DOMObserver] Checking dialog ${index + 1}/${dialogs.length}:`);
-
-      // Skip if already observed
-      if (this.observedElements.has(dialogEl)) {
-        console.log('[DOMObserver]   ✗ Already observed, skipping');
-        return;
+    // Filter out children if parent is also in the set
+    const rootElements = Array.from(foundElements).filter(element => {
+      for (const otherElement of foundElements) {
+        if (otherElement !== element && otherElement.contains(element)) {
+          console.log('[DOMObserver]   Filtering out child element');
+          return false;
+        }
       }
+      return true;
+    });
 
-      // Check if it's visible
-      const visible = this.isVisible(dialogEl);
-      console.log(`[DOMObserver]   Visible: ${visible} (width: ${dialogEl.offsetWidth}, height: ${dialogEl.offsetHeight})`);
+    console.log(`[DOMObserver] Total unique editors found: ${rootElements.length}`);
 
-      if (!visible) {
-        console.log('[DOMObserver]   ✗ Not visible, skipping');
-        return;
-      }
-
-      // Check if it contains a post editor (contenteditable, .ql-editor, .tiptap, .ProseMirror)
-      const editor1 = dialogEl.querySelector('[contenteditable]'); // ANY contenteditable (true, plaintext-only, etc)
-      const editor2 = dialogEl.querySelector('.ql-editor');
-      const editor3 = dialogEl.querySelector('.tiptap'); // TipTap editor (LinkedIn 2026)
-      const editor4 = dialogEl.querySelector('.ProseMirror'); // ProseMirror (TipTap uses this)
-      console.log(`[DOMObserver]   Searching for editor:`);
-      console.log(`[DOMObserver]     [contenteditable]: ${!!editor1}`);
-      console.log(`[DOMObserver]     .ql-editor: ${!!editor2}`);
-      console.log(`[DOMObserver]     .tiptap: ${!!editor3}`);
-      console.log(`[DOMObserver]     .ProseMirror: ${!!editor4}`);
-
-      const hasEditor = editor1 || editor2 || editor3 || editor4;
-
-      if (hasEditor) {
-        console.log('[DOMObserver]   ✓✓✓ DIALOG WITH EDITOR FOUND! ✓✓✓');
-        console.log('[DOMObserver]   Marking as observed and notifying callbacks...');
-        this.observedElements.set(dialogEl, 'post-composer');
-        this.notifyCallbacks('post-composer', dialogEl);
-        console.log('[DOMObserver]   ✓ Callback notification sent!');
-      } else {
-        console.log('[DOMObserver]   ✗ Dialog has no editor, skipping');
-      }
+    // Notify for each root element
+    rootElements.forEach(element => {
+      console.log('[DOMObserver]   ✓✓✓ NOTIFYING CALLBACKS ✓✓✓');
+      this.observedElements.set(element, 'post-composer');
+      this.notifyCallbacks('post-composer', element);
     });
 
     console.log('[DOMObserver] === Scan complete ===');

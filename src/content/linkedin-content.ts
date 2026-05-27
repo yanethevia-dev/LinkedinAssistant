@@ -186,28 +186,12 @@ function handleGeneratePost(composerElement: HTMLElement) {
 // Handle Improve Post button click
 function handleImprovePost(composerElement: HTMLElement) {
   console.log('[Content Script] Improve Post clicked');
-  console.log('[Content Script] Composer element:', composerElement.className);
+  console.log('[Content Script] Composer element (editor):', composerElement.className.substring(0, 50));
 
-  // Get current post text - try multiple selectors for different editor types
-  let textEditor = composerElement.querySelector('.ql-editor') as HTMLElement;
-  if (!textEditor) {
-    textEditor = composerElement.querySelector('.tiptap') as HTMLElement; // TipTap editor (LinkedIn 2026)
-  }
-  if (!textEditor) {
-    textEditor = composerElement.querySelector('.ProseMirror') as HTMLElement; // ProseMirror
-  }
-  if (!textEditor) {
-    textEditor = composerElement.querySelector('[contenteditable]') as HTMLElement; // ANY contenteditable
-  }
+  // The composerElement IS the editor now
+  const textEditor = composerElement;
 
-  console.log('[Content Script] Text editor found:', !!textEditor);
-  console.log('[Content Script] Text editor type:', textEditor?.className);
-  console.log('[Content Script] Text editor content:', textEditor?.textContent?.substring(0, 100));
-
-  if (!textEditor) {
-    alert('Could not find the text editor.\n\nPlease try again.');
-    return;
-  }
+  console.log('[Content Script] Text editor content:', textEditor.textContent?.substring(0, 100));
 
   const currentText = textEditor.textContent?.trim() || '';
 
